@@ -1,5 +1,42 @@
 {
 
-    "AppTitle": "تطبيق البث"
+    "AppTitle": "تطبيق البث",
+    "home": "الرئيسية",
+    "browse": "تصفح",
+    "watch_list": "قائمة المشاهدة",
+    "downloads": "التنزيلات",
+    "settings": "الإعدادات",
+    "help": "مساعدة",
+    "featured_title": "صعود إكس",
+    "featured_description": "رحلة ملحمية عبر الفضاء والزمن، حيث يكتشف الأبطال مصيرهم الحقيقي.",
+    "play": "تشغيل",
+    "more_info": "المزيد من المعلومات",
+    "popular": "شائع",
+    "continue_watching": "استكمل المشاهدة",
+    "new_releases": "إصدارات جديدة",
+    "trending_now": "الأكثر رواجًا",
+    "all": "الكل",
+    "movies": "أفلام",
+    "series": "مسلسلات",
+    "tv_shows": "برامج تلفزيونية",
+    "podcasts": "بودكاست",
+    "iptv": "IPTV",
+    "live_channels": "قنوات مباشرة",
+    "videos": "فيديوهات",
+    "search": "بحث",
+  "search_hint": "ابحث عن فيديوهات، قنوات، قوائم تشغيل...",
+  "search_prompt": "ابحث عن المحتوى المفضل لديك",
+  "search_results": "نتائج البحث",
+  "items_found": "عنصر تم العثور عليه",
+  "error_occurred": "حدث خطأ",
+  "untitled": "بدون عنوان",
+  "unknown_channel": "قناة غير معروفة",
+  "views": "مشاهدة",
+  "share": "مشاركة",
+  "add_to_playlist": "إضافة إلى قائمة التشغيل",
+  "description": "الوصف",
+  "tags": "الوسوم",
+  "search_pressed": "تم الضغط على البحث"
+   
 
 }

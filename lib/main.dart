@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:streamapp/core/di/service_locator.dart' as di;
 import 'package:streamapp/core/theme/app_theme.dart';
+import 'package:streamapp/features/home/presentation/pages/navigation_shell.dart';
+import 'package:streamapp/test_videos_page.dart';
 
 void main() async{
 
@@ -35,11 +37,8 @@ class MyApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,
-      home:  Scaffold(
-        body: Center(
-          child: Text('AppTitle'.tr()),
-        ),
-      ),
+      //home:  const TestVideosPage()
+      home: const NavigationShell(),
     );
   }
 }

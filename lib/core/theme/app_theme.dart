@@ -2,51 +2,67 @@
 
 import 'package:flutter/material.dart';
 
+
 class AppTheme {
- // Private constructor to prevent instantiation
   AppTheme._();
 
-  // --- LIGHT THEME ---
-  static final ThemeData lightTheme = ThemeData(
-    brightness: Brightness.light,
-    scaffoldBackgroundColor: const Color(0xFFFFFFFF),
-    primaryColor: const Color(0xff319291),
+  // TV Streaming App Color Palette
+  static const Color _darkBg = Color(0xFF0B0E14);
+  static const Color _darkSurface = Color(0xFF141922);
+  static const Color _accentBlue = Color(0xFF5B6EF5);
+  static const Color _accentPurple = Color(0xFF7B5FE8);
+  static const Color _textPrimary = Color(0xFFFFFFFF);
+  static const Color _textSecondary = Color(0xFFB0B3B8);
+
+  static final ThemeData darkTheme = ThemeData(
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: _darkBg,
+    primaryColor: _accentBlue,
+    fontFamily: 'Roboto',
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xff319291),
+      backgroundColor: Colors.transparent,
       elevation: 0,
-      titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-      iconTheme: IconThemeData(color: Colors.white),
+      titleTextStyle: TextStyle(
+        color: _textPrimary,
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+      ),
+      iconTheme: IconThemeData(color: _textPrimary),
     ),
-    colorScheme: const ColorScheme.light(
-      primary: Color(0xff319291),
+    colorScheme: const ColorScheme.dark(
+      primary: _accentBlue,
+      secondary: _accentPurple,
+      background: _darkBg,
+      surface: _darkSurface,
       onPrimary: Colors.white,
-      secondary: Color(0xff4dc9a4),
-      background: Color(0xFFFFFFFF),
-      surface: Color(0xfff3f4f6), // Used for cards, dialogs, etc.
-      onSurface: Color(0xff1b5a80), // Main text color
-      error: Color(0xffd42032),
+      onSurface: _textPrimary,
+      onBackground: _textPrimary,
+    ),
+    textTheme: const TextTheme(
+      displayLarge: TextStyle(color: _textPrimary, fontSize: 32, fontWeight: FontWeight.bold),
+      displayMedium: TextStyle(color: _textPrimary, fontSize: 24, fontWeight: FontWeight.w600),
+      bodyLarge: TextStyle(color: _textPrimary, fontSize: 16),
+      bodyMedium: TextStyle(color: _textSecondary, fontSize: 14),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _accentBlue,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
     ),
   );
 
-  // --- DARK THEME ---
-  static final ThemeData darkTheme = ThemeData(
-    brightness: Brightness.dark,
-    scaffoldBackgroundColor: const Color(0xFF121212), // A standard dark background
-    primaryColor: const Color(0xff4dc9a4), // A brighter primary for dark mode
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF1F1F1F),
-      elevation: 0,
-      titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-      iconTheme: IconThemeData(color: Colors.white),
-    ),
-    colorScheme: const ColorScheme.dark(
-      primary: Color(0xff4dc9a4),
-      onPrimary: Colors.black,
-      secondary: Color(0xff319291),
-      background: Color(0xFF121212),
-      surface: Color(0xFF1F1F1F), // Used for cards, dialogs, etc.
-      onSurface: Color(0xFFFFFFFF), // Main text color
-      error: Color(0xffd42032),
+  static final ThemeData lightTheme = ThemeData(
+    brightness: Brightness.light,
+    scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+    primaryColor: _accentBlue,
+    colorScheme: const ColorScheme.light(
+      primary: _accentBlue,
+      secondary: _accentPurple,
+      background: Color(0xFFF5F5F5),
+      surface: Colors.white,
     ),
   );
 }

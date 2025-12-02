@@ -45,6 +45,7 @@ dependencies:
   flutter_svg:
   connectivity_plus:
   internet_connection_checker_plus:
+  json_annotation:
 
 
 dev_dependencies:

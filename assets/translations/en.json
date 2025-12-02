@@ -2,6 +2,44 @@
 
 {
 
- "AppTitle": "Stream App"
+ "AppTitle": "Stream App",
+ "home": "Home",
+ "browse": "Browse",
+ "watch_list": "Watch List",
+ "downloads": "Downloads",
+ "settings": "Settings",
+ "help": "Help",
+ "featured_title": "Rise of X",
+ "featured_description": "An epic journey through space and time, where heroes discover their true destiny.",
+ "play": "Play",
+ "more_info": "More Info",
+ "popular": "Popular",
+ "continue_watching": "Continue Watching",
+ "new_releases": "New Releases",
+ "trending_now": "Trending Now",
+ "all": "All",
+ "movies": "Movies",
+ "series": "Series",
+ "tv_shows": "TV Shows",
+ "podcasts": "Podcasts",
+ "iptv": "IPTV",
+ "live_channels": "Live Channels",
+  "videos": "Videos",
+  "search": "Search",
+  "search_hint": "Search for videos, channels, playlists...",
+  "search_prompt": "Search for your favorite content",
+  "search_results": "Search Results",
+  "items_found": "items found",
+  "error_occurred": "Error Occurred",
+  "untitled": "Untitled",
+  "unknown_channel": "Unknown Channel",
+  "views": "views",
+  "share": "Share",
+  "add_to_playlist": "Add to Playlist",
+  "description": "Description",
+  "tags": "Tags",
+  "search_pressed": "Search pressed"
+
+
 
 }
