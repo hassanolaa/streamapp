@@ -7,29 +7,37 @@ import 'package:streamapp/features/videos/presentation/cubit/videos_state.dart';
 class VideosCubit extends Cubit<VideosState> {
   final VideosRepository repository;
 
-  String? _currentPageToken;
+  Map<String, String>? _currentPageTokens; // Track tokens per provider
   List<SummaryModel> _allItems = [];
-  SearchResultModel? _lastSearchResult; // Store the last search result
-  String _lastProvider = 'YouTube';
+  SearchResultModel? _lastSearchResult;
   String _lastQuery = '';
+  final List<String> _searchProviders = ['youtube', 'soundcloud'];
 
   VideosCubit({required this.repository}) : super(VideosInitial());
 
-  Future<void> searchVideos(String provider, String query, {List<String>? filters}) async {
+  /// Search across multiple providers (YouTube + SoundCloud)
+  Future<void> searchVideos(String query, {List<String>? filters}) async {
     try {
       emit(VideosLoading());
-      _lastProvider = provider;
       _lastQuery = query;
 
-      final result = await repository.search(provider, query, filters: filters);
-      _lastSearchResult = result; // Store the search result
+      final result = await repository.searchMultipleProviders(
+        _searchProviders,
+        query,
+        filters: filters,
+      );
+
+      _lastSearchResult = result;
       _allItems = result.items.getSummaries();
-      _currentPageToken = result.items.nextPageToken;
+      
+      // Parse page tokens from result
+      _currentPageTokens = _parsePageTokens(result.items.nextPageToken);
 
       emit(VideosSearchSuccess(
         searchResult: result,
         allItems: _allItems,
-        hasMore: _currentPageToken != null,
+        hasMore: _currentPageTokens != null && _currentPageTokens!.isNotEmpty,
+        pageTokens: _currentPageTokens,
       ));
     } catch (e) {
       emit(VideosError(e.toString()));
@@ -37,23 +45,43 @@ class VideosCubit extends Cubit<VideosState> {
   }
 
   Future<void> loadMoreVideos() async {
-    if (_currentPageToken == null) return;
+    if (_currentPageTokens == null || _currentPageTokens!.isEmpty) return;
 
     try {
       emit(VideosLoadingMore(_allItems));
 
-      final moreItems = await repository.loadMore(_currentPageToken!);
+      final moreItems = await repository.loadMoreMultipleProviders(_currentPageTokens!);
       _allItems.addAll(moreItems.getSummaries());
-      _currentPageToken = moreItems.nextPageToken;
+      
+      // Update page tokens
+      _currentPageTokens = _parsePageTokens(moreItems.nextPageToken);
 
       emit(VideosSearchSuccess(
-        searchResult: _lastSearchResult, // Use stored search result
+        searchResult: _lastSearchResult,
         allItems: _allItems,
-        hasMore: _currentPageToken != null,
+        hasMore: _currentPageTokens != null && _currentPageTokens!.isNotEmpty,
+        pageTokens: _currentPageTokens,
       ));
     } catch (e) {
       emit(VideosError(e.toString()));
     }
+  }
+
+  /// Parse page tokens from string format "token1|token2"
+  Map<String, String>? _parsePageTokens(String? tokenString) {
+    if (tokenString == null || tokenString.isEmpty) return null;
+
+    final tokens = tokenString.split('|');
+    if (tokens.length != _searchProviders.length) return null;
+
+    final pageTokens = <String, String>{};
+    for (var i = 0; i < _searchProviders.length; i++) {
+      if (tokens[i].isNotEmpty) {
+        pageTokens[_searchProviders[i]] = tokens[i];
+      }
+    }
+
+    return pageTokens.isNotEmpty ? pageTokens : null;
   }
 
   Future<void> getStreamInfo(String url) async {

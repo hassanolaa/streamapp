@@ -13,18 +13,20 @@ class VideosInitial extends VideosState {}
 class VideosLoading extends VideosState {}
 
 class VideosSearchSuccess extends VideosState {
-  final SearchResultModel? searchResult; // Made nullable
+  final SearchResultModel? searchResult;
   final List<SummaryModel> allItems;
   final bool hasMore;
+  final Map<String, String>? pageTokens; // Track tokens per provider
 
   VideosSearchSuccess({
-    this.searchResult, // No longer required
+    this.searchResult,
     required this.allItems,
     this.hasMore = false,
+    this.pageTokens,
   });
 
   @override
-  List<Object?> get props => [searchResult, allItems, hasMore];
+  List<Object?> get props => [searchResult, allItems, hasMore, pageTokens];
 }
 
 class VideosLoadingMore extends VideosState {

@@ -17,7 +17,12 @@ abstract class VideosRepository {
   Future<ChannelInfoModel> getChannelInfo(String url);
   Future<List<String>> getSearchHistory();
   Future<void> clearSearchHistory();
-  
+    Future<SearchResultModel> searchMultipleProviders(
+    List<String> providers,
+    String query, {
+    List<String>? filters,
+  });
+  Future<ItemsModel> loadMoreMultipleProviders(Map<String, String> pageTokens);
 }
 
 class VideosRepositoryImpl implements VideosRepository {
@@ -134,6 +139,22 @@ class VideosRepositoryImpl implements VideosRepository {
       throw RepositoryException('Failed to clear search history: $e');
     }
   }
+
+  @override
+  Future<SearchResultModel> searchMultipleProviders(
+    List<String> providers,
+    String query, {
+    List<String>? filters,
+  }) async {
+    return await remoteDataSource.searchMultipleProviders(
+      providers,
+      query,
+      filters: filters,
+    );
+  }
+  Future<ItemsModel> loadMoreMultipleProviders(Map<String, String> pageTokens) async {
+  return await remoteDataSource.loadMoreMultipleProviders(pageTokens);
+}
 }
 
 /// Custom exception for repository-related errors

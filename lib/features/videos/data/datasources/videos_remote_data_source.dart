@@ -3,29 +3,40 @@ import 'dart:io';
 import 'package:streamapp/features/videos/data/models/info_model.dart';
 import 'package:streamapp/features/videos/data/models/items_model.dart';
 import 'package:streamapp/features/videos/data/models/search_result_model.dart';
+import 'package:streamapp/features/videos/data/models/summary_model.dart';
 
 abstract class VideosRemoteDataSource {
-  /// Get list of available search providers (YouTube, PeerTube, SoundCloud, etc.)
+  /// Get list of available search providers
   Future<List<String>> getSearchProviders();
-  
+
   /// Search for content using a specific provider
   Future<SearchResultModel> search(
     String provider,
     String query, {
     List<String>? filters,
   });
-  
+
+  /// Search multiple providers simultaneously
+  Future<SearchResultModel> searchMultipleProviders(
+    List<String> providers,
+    String query, {
+    List<String>? filters,
+  });
+
   /// Load more results using pagination token
   Future<ItemsModel> loadMore(String pageToken);
-  
+
   /// Get detailed stream/video information
   Future<StreamInfoModel> getStreamInfo(String url);
-  
+
   /// Get playlist information
   Future<PlaylistInfoModel> getPlaylistInfo(String url);
-  
+
   /// Get channel information
   Future<ChannelInfoModel> getChannelInfo(String url);
+
+  /// Load more from multiple providers
+  Future<ItemsModel> loadMoreMultipleProviders(Map<String, String> pageTokens);
 }
 
 class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
@@ -41,7 +52,7 @@ class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
   String _getJavaPath() {
     print('Using Java path: ${javaPath ?? "system default"}');
     if (javaPath != null) return javaPath!;
-    
+
     // Try to find Java 21+ in common locations
     final possiblePaths = [
       '/usr/lib/jvm/java-25-openjdk-amd64/bin/java',
@@ -64,12 +75,12 @@ class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
   Future<dynamic> _executeCommand(List<String> args) async {
     try {
       final javaExec = _getJavaPath();
-      
+
       // Execute the Java command
       final result = await Process.run(
         javaExec,
         ['-jar', tuberJarPath, ...args],
-        runInShell: false, // Changed to false to avoid shell PATH issues
+        runInShell: false,
       );
 
       // Check for errors
@@ -88,7 +99,8 @@ class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
 
       return jsonDecode(output);
     } on ProcessException catch (e) {
-      throw TuberException('Failed to execute tuber process: ${e.message}\nJava path: ${_getJavaPath()}');
+      throw TuberException(
+          'Failed to execute tuber process: ${e.message}\nJava path: ${_getJavaPath()}');
     } on FormatException catch (e) {
       throw TuberException('Invalid JSON response from tuber: ${e.message}');
     } catch (e) {
@@ -124,6 +136,7 @@ class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
       throw TuberException('Failed to search: $e');
     }
   }
+
 
   @override
   Future<ItemsModel> loadMore(String pageToken) async {
@@ -166,91 +179,136 @@ class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
     }
   }
 
-
-    String _extractPlaylistId(String url) {
-    // Handle different URL formats:
-    // https://www.youtube.com/playlist?list=PLWvjH-CcaW80J7aa7ET7Tg8Fq3CBz_sM
-    // https://youtube.com/playlist?list=PLWvjH-CcaW80J7aa7ET7Tg8Fq3CBz_sM
-    
-    final uri = Uri.parse(url);
-    
-    // Check if it's already just an ID
-    if (!url.contains('://')) {
-      return url;
-    }
-    
-    // Extract from query parameter 'list'
-    if (uri.queryParameters.containsKey('list')) {
-      return uri.queryParameters['list']!;
-    }
-    
-    // If it's in path format (rare but possible)
-    final pathSegments = uri.pathSegments;
-    if (pathSegments.isNotEmpty) {
-      return pathSegments.last;
-    }
-    
-    // Return as-is if we can't extract
-    return url;
+  SearchResultModel _mergeSearchResults(
+  List<SearchResultModel> results,
+  Map<String, String> pageTokens,
+) {
+  if (results.isEmpty) {
+    throw TuberException('No results to merge');
   }
 
-  /// Extract channel ID from URL
-  String _extractChannelId(String url) {
-    final uri = Uri.parse(url);
-    
-    // Check if it's already just an ID
-    if (!url.contains('://')) {
-      return url;
-    }
-    
-    // Handle different formats:
-    // https://www.youtube.com/channel/UC...
-    // https://www.youtube.com/@channelname
-    // https://www.youtube.com/c/channelname
-    
-    final pathSegments = uri.pathSegments;
-    if (pathSegments.isNotEmpty) {
-      if (pathSegments[0] == 'channel' && pathSegments.length > 1) {
-        return pathSegments[1];
+  if (results.length == 1) {
+    return results.first;
+  }
+
+  // Collect all items from all results
+  final allItems = <SummaryModel>[];
+  for (var result in results) {
+    allItems.addAll(result.items.items);
+  }
+
+  // Use the first result as base and merge items
+  final firstResult = results.first;
+  
+  // Create a merged items model with combined page tokens
+  final mergedItems = ItemsModel(
+    items: allItems,
+    nextPageToken: pageTokens.isNotEmpty 
+        ? pageTokens.values.join('|') // Store all tokens separated by |
+        : null,
+  );
+
+  return SearchResultModel(
+    items: mergedItems,
+    suggestion: firstResult.suggestion,
+    isCorrected: firstResult.isCorrected,
+  );
+}
+
+@override
+Future<SearchResultModel> searchMultipleProviders(
+  List<String> providers,
+  String query, {
+  List<String>? filters,
+}) async {
+  try {
+    // Execute searches in parallel
+    final searchFutures = providers.asMap().entries.map((entry) async {
+      try {
+        final result = await search(entry.value, query, filters: filters);
+        return MapEntry(entry.value, result);
+      } catch (e) {
+        print('Warning: Failed to search ${entry.value}: $e');
+        return null;
       }
-      // For @username or /c/ format, return the full URL as Tuber might handle it
-      return url;
-    }
-    
-    return url;
-  }
+    });
 
-  /// Extract stream/video ID from URL
-  String _extractStreamId(String url) {
-    final uri = Uri.parse(url);
-    
-    // Check if it's already just an ID
-    if (!url.contains('://')) {
-      return url;
-    }
-    
-    // Extract from query parameter 'v'
-    if (uri.queryParameters.containsKey('v')) {
-      return uri.queryParameters['v']!;
-    }
-    
-    // Handle youtu.be short links
-    if (uri.host.contains('youtu.be')) {
-      final pathSegments = uri.pathSegments;
-      if (pathSegments.isNotEmpty) {
-        return pathSegments.first;
+    final results = await Future.wait(searchFutures);
+
+    // Filter out null results and separate into map
+    final validResults = <String, SearchResultModel>{};
+    final pageTokens = <String, String>{};
+
+    for (var entry in results.whereType<MapEntry<String, SearchResultModel>>()) {
+      validResults[entry.key] = entry.value;
+      if (entry.value.items.nextPageToken != null) {
+        pageTokens[entry.key] = entry.value.items.nextPageToken!;
       }
     }
-    
-    // Return as-is if we can't extract
-    return url;
+
+    if (validResults.isEmpty) {
+      throw TuberException('All provider searches failed');
+    }
+
+    // Merge all results with page tokens
+    return _mergeSearchResults(validResults.values.toList(), pageTokens);
+  } catch (e) {
+    throw TuberException('Failed to search multiple providers: $e');
   }
+}
+
+@override
+/// Load more from multiple providers
+Future<ItemsModel> loadMoreMultipleProviders(
+  Map<String, String> pageTokens,
+) async {
+  try {
+    // Load more from each provider in parallel
+    final loadFutures = pageTokens.entries.map((entry) async {
+      try {
+        return await loadMore(entry.value);
+      } catch (e) {
+        print('Warning: Failed to load more from ${entry.key}: $e');
+        return null;
+      }
+    });
+
+    final results = await Future.wait(loadFutures);
+    final validResults = results.whereType<ItemsModel>().toList();
+
+    if (validResults.isEmpty) {
+      throw TuberException('Failed to load more from all providers');
+    }
+
+    // Merge all items
+    final allItems = <SummaryModel>[];
+    final newPageTokens = <String, String>{};
+
+    for (var i = 0; i < validResults.length; i++) {
+      final result = validResults[i];
+      allItems.addAll(result.items);
+      
+      if (result.nextPageToken != null) {
+        final provider = pageTokens.keys.elementAt(i);
+        newPageTokens[provider] = result.nextPageToken!;
+      }
+    }
+
+    return ItemsModel(
+      items: allItems,
+      nextPageToken: newPageTokens.isNotEmpty 
+          ? newPageTokens.values.join('|')
+          : null,
+    );
+  } catch (e) {
+    throw TuberException('Failed to load more from multiple providers: $e');
+  }
+}
 }
 
 /// Custom exception for Tuber-related errors
 class TuberException implements Exception {
   final String message;
-
   TuberException(this.message);
 
   @override

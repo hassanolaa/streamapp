@@ -15,7 +15,6 @@ class SearchBarWidget extends StatefulWidget {
 
 class _SearchBarWidgetState extends State<SearchBarWidget> {
   final TextEditingController _controller = TextEditingController();
-  String _selectedProvider = 'youtube';
 
   @override
   void dispose() {
@@ -26,7 +25,8 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   void _performSearch() {
     final query = _controller.text.trim();
     if (query.isNotEmpty) {
-      context.read<VideosCubit>().searchVideos(_selectedProvider, query);
+      // Search both YouTube and SoundCloud
+      context.read<VideosCubit>().searchVideos(query);
     }
   }
 
@@ -34,40 +34,13 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Provider Dropdown
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: DropdownButton<String>(
-            value: _selectedProvider,
-            underline: const SizedBox.shrink(),
-            dropdownColor: Theme.of(context).colorScheme.surface,
-            style: Theme.of(context).textTheme.bodyLarge,
-            items: ['youtube','soundcloud']
-                .map((provider) => DropdownMenuItem(
-                      value: provider,
-                      child: Text(provider),
-                    ))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedProvider = value);
-              }
-            },
-          ),
-        ),
-
-        const SizedBox(width: 16),
-
         // Search Input
         Expanded(
           child: Focus(
             focusNode: widget.focusNode,
             onKeyEvent: (node, event) {
-              if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+              if (event is KeyDownEvent &&
+                  event.logicalKey == LogicalKeyboardKey.enter) {
                 _performSearch();
                 return KeyEventResult.handled;
               }
@@ -101,9 +74,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
             ),
           ),
         ),
-
         const SizedBox(width: 16),
-
         // Search Button
         ElevatedButton.icon(
           onPressed: _performSearch,
