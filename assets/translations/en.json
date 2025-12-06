@@ -38,7 +38,25 @@
   "add_to_playlist": "Add to Playlist",
   "description": "Description",
   "tags": "Tags",
-  "search_pressed": "Search pressed"
+  "search_pressed": "Search pressed",
+  "add_to_favorites": "Add to Favorites",
+  "language": "Language",
+  "similar_videos": "Similar Videos",
+  "age_limit": "Age Limit",
+  "category": "Category",
+   "see_more": "See More",
+  "see_less": "See Less",
+  "subscribers": "Subscribers",
+  "about": "About",
+  "content": "Content",
+  "subscribe": "Subscribe",
+  "no_content_available": "No content available",
+  "playlist": "Playlist",
+  "playlist_videos": "Playlist Videos",
+  "play_all": "Play All",
+  "type": "Type",
+  "untitled_playlist": "Untitled Playlist",
+  "no_videos_in_playlist": "No videos in this playlist"
 
 
 

@@ -46,6 +46,7 @@ dependencies:
   connectivity_plus:
   internet_connection_checker_plus:
   json_annotation:
+  url_launcher:
 
 
 dev_dependencies:

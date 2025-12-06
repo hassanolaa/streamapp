@@ -5,17 +5,18 @@ import 'package:streamapp/features/videos/presentation/pages/video_details_page.
 class VideoCardWidget extends StatelessWidget {
   final SummaryModel summary;
   final bool isFocused;
+  final VoidCallback? onTap; // Add this parameter
 
   const VideoCardWidget({
     super.key,
     required this.summary,
     this.isFocused = false,
+    this.onTap, // Add this parameter
   });
 
   @override
   Widget build(BuildContext context) {
     final data = summary.data;
-    
     String? thumbnailUrl;
     String? title;
     String? subtitle;
@@ -39,7 +40,8 @@ class VideoCardWidget extends StatelessWidget {
     }
 
     return InkWell(
-      onTap: () {
+      onTap: onTap ?? () {
+        // Default behavior: navigate to video details
         if (url != null) {
           Navigator.push(
             context,
@@ -91,7 +93,6 @@ class VideoCardWidget extends StatelessWidget {
                       ),
               ),
             ),
-
             // Info
             Container(
               padding: const EdgeInsets.all(12),

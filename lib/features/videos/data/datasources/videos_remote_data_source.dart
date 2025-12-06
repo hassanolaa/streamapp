@@ -148,6 +148,7 @@ class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
   @override
   Future<PlaylistInfoModel> getPlaylistInfo(String url) async {
     try {
+      print('Getting playlist info for URL: $url');
       final result = await _executeCommand(['playlist', url]);
       return PlaylistInfoModel.fromJson(result as Map<String, dynamic>);
     } catch (e) {
@@ -163,6 +164,86 @@ class VideosRemoteDataSourceImpl implements VideosRemoteDataSource {
     } catch (e) {
       throw TuberException('Failed to get channel info: $e');
     }
+  }
+
+
+    String _extractPlaylistId(String url) {
+    // Handle different URL formats:
+    // https://www.youtube.com/playlist?list=PLWvjH-CcaW80J7aa7ET7Tg8Fq3CBz_sM
+    // https://youtube.com/playlist?list=PLWvjH-CcaW80J7aa7ET7Tg8Fq3CBz_sM
+    
+    final uri = Uri.parse(url);
+    
+    // Check if it's already just an ID
+    if (!url.contains('://')) {
+      return url;
+    }
+    
+    // Extract from query parameter 'list'
+    if (uri.queryParameters.containsKey('list')) {
+      return uri.queryParameters['list']!;
+    }
+    
+    // If it's in path format (rare but possible)
+    final pathSegments = uri.pathSegments;
+    if (pathSegments.isNotEmpty) {
+      return pathSegments.last;
+    }
+    
+    // Return as-is if we can't extract
+    return url;
+  }
+
+  /// Extract channel ID from URL
+  String _extractChannelId(String url) {
+    final uri = Uri.parse(url);
+    
+    // Check if it's already just an ID
+    if (!url.contains('://')) {
+      return url;
+    }
+    
+    // Handle different formats:
+    // https://www.youtube.com/channel/UC...
+    // https://www.youtube.com/@channelname
+    // https://www.youtube.com/c/channelname
+    
+    final pathSegments = uri.pathSegments;
+    if (pathSegments.isNotEmpty) {
+      if (pathSegments[0] == 'channel' && pathSegments.length > 1) {
+        return pathSegments[1];
+      }
+      // For @username or /c/ format, return the full URL as Tuber might handle it
+      return url;
+    }
+    
+    return url;
+  }
+
+  /// Extract stream/video ID from URL
+  String _extractStreamId(String url) {
+    final uri = Uri.parse(url);
+    
+    // Check if it's already just an ID
+    if (!url.contains('://')) {
+      return url;
+    }
+    
+    // Extract from query parameter 'v'
+    if (uri.queryParameters.containsKey('v')) {
+      return uri.queryParameters['v']!;
+    }
+    
+    // Handle youtu.be short links
+    if (uri.host.contains('youtu.be')) {
+      final pathSegments = uri.pathSegments;
+      if (pathSegments.isNotEmpty) {
+        return pathSegments.first;
+      }
+    }
+    
+    // Return as-is if we can't extract
+    return url;
   }
 }
 

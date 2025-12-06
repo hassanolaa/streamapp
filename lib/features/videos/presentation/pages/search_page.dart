@@ -74,7 +74,20 @@ class _SearchPageContentState extends State<_SearchPageContent> {
               const SizedBox(height: 40),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 60),
-                child: SearchBarWidget(focusNode: _searchFocusNode),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded, size: 32),
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(child: SearchBarWidget(focusNode: _searchFocusNode)),
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
               Expanded(

@@ -172,15 +172,6 @@ class StreamInfoModel {
   }
 }
 
-
-
-
-
-
-
-
-
-
 class PlaylistInfoModel {
   final String? id;
   final String? name;
@@ -256,9 +247,6 @@ class PlaylistInfoModel {
     };
   }
 }
-
-
-
 
 class ChannelInfoModel {
   final String? id;

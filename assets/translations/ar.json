@@ -36,7 +36,25 @@
   "add_to_playlist": "إضافة إلى قائمة التشغيل",
   "description": "الوصف",
   "tags": "الوسوم",
-  "search_pressed": "تم الضغط على البحث"
+  "search_pressed": "تم الضغط على البحث",
+  "add_to_favorites": "إضافة للمفضلة",
+  "language": "اللغة",
+  "similar_videos": "فيديوهات مشابهة",
+   "age_limit": "الحد العمري",
+  "category": "الفئة",
+  "see_more": "عرض المزيد",
+  "see_less": "عرض أقل",
+  "subscribers": "المشتركون",
+  "about": "حول",
+  "content": "المحتوى",
+  "subscribe": "اشتراك",
+  "no_content_available": "لا يوجد محتوى متاح",
+  "playlist": "قائمة التشغيل",
+  "playlist_videos": "فيديوهات القائمة",
+  "play_all": "تشغيل الكل",
+  "type": "النوع",
+  "untitled_playlist": "قائمة تشغيل بدون عنوان",
+  "no_videos_in_playlist": "لا توجد فيديوهات في هذه القائمة"
    
 
 }
