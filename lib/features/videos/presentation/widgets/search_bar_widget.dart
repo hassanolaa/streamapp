@@ -46,7 +46,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
             underline: const SizedBox.shrink(),
             dropdownColor: Theme.of(context).colorScheme.surface,
             style: Theme.of(context).textTheme.bodyLarge,
-            items: ['youtube', 'peertube', 'soundcloud']
+            items: ['youtube','soundcloud']
                 .map((provider) => DropdownMenuItem(
                       value: provider,
                       child: Text(provider),

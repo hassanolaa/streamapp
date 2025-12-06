@@ -13,12 +13,12 @@ class VideosInitial extends VideosState {}
 class VideosLoading extends VideosState {}
 
 class VideosSearchSuccess extends VideosState {
-  final SearchResultModel searchResult;
+  final SearchResultModel? searchResult; // Made nullable
   final List<SummaryModel> allItems;
   final bool hasMore;
 
   VideosSearchSuccess({
-    required this.searchResult,
+    this.searchResult, // No longer required
     required this.allItems,
     this.hasMore = false,
   });

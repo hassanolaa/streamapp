@@ -17,6 +17,7 @@ abstract class VideosRepository {
   Future<ChannelInfoModel> getChannelInfo(String url);
   Future<List<String>> getSearchHistory();
   Future<void> clearSearchHistory();
+  
 }
 
 class VideosRepositoryImpl implements VideosRepository {

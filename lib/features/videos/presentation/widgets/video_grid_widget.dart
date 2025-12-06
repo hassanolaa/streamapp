@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:streamapp/features/videos/data/models/summary_model.dart';
@@ -28,16 +30,38 @@ class _VideoGridWidgetState extends State<VideoGridWidget> {
     _focusNodes = List.generate(widget.items.length, (_) => FocusNode());
   }
 
-  @override
+   @override
   void didUpdateWidget(VideoGridWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (widget.items.length != oldWidget.items.length) {
+      // preserve old focused index but clamp it to new range
+      final oldFocused = _focusedIndex;
       for (var node in _focusNodes) {
         node.dispose();
       }
+
       _focusNodes = List.generate(widget.items.length, (_) => FocusNode());
+
+      // clamp focused index to new range (if there are items)
+      if (widget.items.isEmpty) {
+        _focusedIndex = 0;
+      } else {
+        _focusedIndex = oldFocused.clamp(0, widget.items.length - 1);
+      }
+
+      // request focus on the new index if appropriate
+      if (_focusNodes.isNotEmpty) {
+        // use addPostFrameCallback to avoid interfering with the current build cycle
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_focusedIndex >= 0 && _focusedIndex < _focusNodes.length) {
+            _focusNodes[_focusedIndex].requestFocus();
+          }
+        });
+      }
     }
   }
+
 
   @override
   void dispose() {
@@ -47,29 +71,37 @@ class _VideoGridWidgetState extends State<VideoGridWidget> {
     super.dispose();
   }
 
-  void _navigate(int direction) {
-    int newIndex = _focusedIndex;
+ void _navigate(int direction) {
+  if (widget.items.isEmpty || _focusNodes.isEmpty) return;
 
-    if (direction == -1 && _focusedIndex > 0) {
-      // Left
-      newIndex = _focusedIndex - 1;
-    } else if (direction == 1 && _focusedIndex < widget.items.length - 1) {
-      // Right
-      newIndex = _focusedIndex + 1;
-    } else if (direction == -_columnsCount && _focusedIndex >= _columnsCount) {
-      // Up
-      newIndex = _focusedIndex - _columnsCount;
-    } else if (direction == _columnsCount && _focusedIndex + _columnsCount < widget.items.length) {
-      // Down
-      newIndex = _focusedIndex + _columnsCount;
-    }
+  final int maxItemIndex = widget.items.length - 1;
+  final int maxFocusIndex = _focusNodes.length - 1;
+  // use the smaller max to avoid race
+  final int maxIndex = math.min(maxItemIndex, maxFocusIndex);
 
-    if (newIndex != _focusedIndex) {
-      setState(() => _focusedIndex = newIndex);
+  int newIndex = _focusedIndex;
+
+  if (direction == -1 && _focusedIndex > 0) {
+    newIndex = _focusedIndex - 1;
+  } else if (direction == 1 && _focusedIndex < maxIndex) {
+    newIndex = _focusedIndex + 1;
+  } else if (direction == -_columnsCount && _focusedIndex >= _columnsCount) {
+    newIndex = _focusedIndex - _columnsCount;
+  } else if (direction == _columnsCount && _focusedIndex + _columnsCount <= maxIndex) {
+    newIndex = _focusedIndex + _columnsCount;
+  }
+
+  if (newIndex != _focusedIndex) {
+    // clamp against the computed maxIndex
+    newIndex = newIndex.clamp(0, maxIndex) as int;
+    setState(() => _focusedIndex = newIndex);
+
+    // guard again before requesting focus
+    if (_focusedIndex >= 0 && _focusedIndex <= maxFocusIndex) {
       _focusNodes[_focusedIndex].requestFocus();
     }
   }
-
+}
   @override
   Widget build(BuildContext context) {
     return Shortcuts(
@@ -116,15 +148,26 @@ class _VideoGridWidgetState extends State<VideoGridWidget> {
             childAspectRatio: 0.7,
           ),
           itemCount: widget.items.length,
-          itemBuilder: (context, index) {
-            return Focus(
-              focusNode: _focusNodes[index],
-              child: VideoCardWidget(
-                summary: widget.items[index],
-                isFocused: _focusedIndex == index,
-              ),
-            );
-          },
+         itemBuilder: (context, index) {
+  // safe access - if index is out of range of _focusNodes, use a local temporary Focus widget
+  if (index < _focusNodes.length) {
+    return Focus(
+      focusNode: _focusNodes[index],
+      child: VideoCardWidget(
+        summary: widget.items[index],
+        isFocused: _focusedIndex == index,
+      ),
+    );
+  }
+
+  // Fallback: render without a focus node until didUpdateWidget recreates them.
+  return Focus(
+    child: VideoCardWidget(
+      summary: widget.items[index],
+      isFocused: _focusedIndex == index,
+    ),
+  );
+},
         ),
       ),
     );

@@ -6,8 +6,10 @@ import 'package:streamapp/features/videos/presentation/cubit/videos_state.dart';
 
 class VideosCubit extends Cubit<VideosState> {
   final VideosRepository repository;
+
   String? _currentPageToken;
   List<SummaryModel> _allItems = [];
+  SearchResultModel? _lastSearchResult; // Store the last search result
   String _lastProvider = 'YouTube';
   String _lastQuery = '';
 
@@ -16,12 +18,11 @@ class VideosCubit extends Cubit<VideosState> {
   Future<void> searchVideos(String provider, String query, {List<String>? filters}) async {
     try {
       emit(VideosLoading());
-      
       _lastProvider = provider;
       _lastQuery = query;
 
       final result = await repository.search(provider, query, filters: filters);
-      
+      _lastSearchResult = result; // Store the search result
       _allItems = result.items.getSummaries();
       _currentPageToken = result.items.nextPageToken;
 
@@ -42,12 +43,11 @@ class VideosCubit extends Cubit<VideosState> {
       emit(VideosLoadingMore(_allItems));
 
       final moreItems = await repository.loadMore(_currentPageToken!);
-      
       _allItems.addAll(moreItems.getSummaries());
       _currentPageToken = moreItems.nextPageToken;
 
       emit(VideosSearchSuccess(
-        searchResult: null as SearchResultModel, // Keep previous search result
+        searchResult: _lastSearchResult, // Use stored search result
         allItems: _allItems,
         hasMore: _currentPageToken != null,
       ));
