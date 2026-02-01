@@ -7,10 +7,11 @@ import 'package:streamapp/core/config/app_config.dart';
 import 'package:streamapp/features/videos/data/datasources/videos_local_data_source.dart';
 import 'package:streamapp/features/videos/data/datasources/videos_remote_data_source.dart';
 import 'package:streamapp/features/videos/data/repositories/videos_repository_impl.dart';
+import 'package:streamapp/features/videos/data/services/recommendation_service.dart';
 
 final sl = GetIt.instance;
 
-void setupLocator() {
+void setupLocator() async{
 
 // Cubits/Blocs
 
@@ -40,5 +41,10 @@ sl.registerLazySingleton<VideosRemoteDataSource>(
 
  // --- External ---
    sl.registerLazySingleton(() => GetStorage());
+   sl.registerLazySingleton<RecommendationService>(
+    () => RecommendationService(),
+  );
+   await sl<RecommendationService>().initialize();
+
 
 }

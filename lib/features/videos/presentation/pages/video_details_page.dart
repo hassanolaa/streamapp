@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:streamapp/core/di/service_locator.dart';
 import 'package:streamapp/features/videos/data/models/info_model.dart';
+import 'package:streamapp/features/videos/data/services/recommendation_service.dart';
 import 'package:streamapp/features/videos/presentation/cubit/videos_cubit.dart';
 import 'package:streamapp/features/videos/presentation/cubit/videos_state.dart';
 import 'package:streamapp/features/videos/presentation/pages/channel_details_page.dart';
@@ -20,13 +22,15 @@ class VideoDetailsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => VideosCubit(repository: sl())..getStreamInfo(videoUrl),
-      child: const _VideoDetailsContent(),
+      child: _VideoDetailsContent(videoUrl: videoUrl),
     );
   }
 }
 
 class _VideoDetailsContent extends StatefulWidget {
-  const _VideoDetailsContent();
+  final String videoUrl;
+  
+  const _VideoDetailsContent({required this.videoUrl});
 
   @override
   State<_VideoDetailsContent> createState() => _VideoDetailsContentState();
@@ -37,16 +41,99 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
   final List<FocusNode> _buttonFocusNodes = List.generate(2, (_) => FocusNode());
   int _selectedRecommendation = 0;
   late List<FocusNode> _recommendationFocusNodes;
-   bool _isDescriptionExpanded = false;
+  bool _isDescriptionExpanded = false;
+
+  // 🆕 Watch tracking variables
+  StreamInfoModel? _streamInfo;
+  int _watchedSeconds = 0;
+  Timer? _watchTimer;
+  bool _isPlaying = false;
+  DateTime? _pageOpenedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageOpenedAt = DateTime.now();
+    _startWatchTimer();
+  }
+
+  // 🆕 Start watch time tracker
+  void _startWatchTimer() {
+    _watchTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_isPlaying && mounted) {
+        setState(() => _watchedSeconds++);
+      }
+    });
+    print('⏱️ Watch timer started');
+  }
+
+  // 🆕 Simulate video play (call this when user presses Play)
+  void _onVideoPlay() {
+    setState(() => _isPlaying = true);
+    print('▶️ Video playing - tracking watch time');
+  }
+
+  // 🆕 Simulate video pause
+  void _onVideoPause() {
+    setState(() => _isPlaying = false);
+    print('⏸️ Video paused at ${_watchedSeconds}s');
+  }
+
+  // 🆕 Save watch history and feed recommendations
+  Future<void> _saveWatchHistory() async {
+    if (_streamInfo == null) {
+      print('⚠️ Stream info not loaded, skipping watch history');
+      return;
+    }
+
+    // Only save if user watched for at least 10 seconds OR page was open for 30+ seconds
+    final timeOnPage = DateTime.now().difference(_pageOpenedAt!).inSeconds;
+    
+    if (_watchedSeconds < 10 && timeOnPage < 30) {
+      print('⚠️ Not saving: watched ${_watchedSeconds}s, on page ${timeOnPage}s');
+      return;
+    }
+
+    try {
+      final recommendationService = sl<RecommendationService>();
+      
+      print('💾 Saving watch history: ${_streamInfo!.name}');
+      print('   Watched: ${_watchedSeconds}s / ${_streamInfo!.duration ?? 0}s');
+      
+      // 1. Add to watch history
+      await recommendationService.addToWatchHistory(
+        widget.videoUrl,
+        _streamInfo!.name,
+        _watchedSeconds,
+        _streamInfo!.duration ?? 0,
+        uploaderName: _streamInfo!.uploader?.name,
+        uploaderUrl: _streamInfo!.uploader?.url,
+        tags: _streamInfo!.tags,
+      );
+
+      // 2. Feed recommendations from this video
+      await recommendationService.feedFromStreamInfo(_streamInfo!);
+      
+      print('✅ Watch history saved + ${_streamInfo!.recommendations.length} recommendations fed');
+    } catch (e) {
+      print('❌ Failed to save watch history: $e');
+    }
+  }
 
   @override
   void dispose() {
+    _watchTimer?.cancel();
+    
+    // 🆕 Save watch history before leaving
+    _saveWatchHistory();
+    
     for (var node in _buttonFocusNodes) {
       node.dispose();
     }
     for (var node in _recommendationFocusNodes) {
       node.dispose();
     }
+    
     super.dispose();
   }
 
@@ -119,6 +206,9 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
               }
 
               if (state is VideosStreamInfoSuccess) {
+                // 🆕 Store stream info for later use
+                _streamInfo = state.streamInfo;
+                
                 _recommendationFocusNodes = List.generate(
                   state.streamInfo.recommendations.length,
                   (_) => FocusNode(),
@@ -139,11 +229,43 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          
           // Hero Banner with Video Info
           _buildHeroBanner(context, info),
 
           const SizedBox(height: 40),
+
+          // 🆕 Watch Time Display (Debug)
+          if (_watchedSeconds > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 60),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.timer_outlined,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Watched: ${_formatDuration(_watchedSeconds)}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 24),
 
           // Video Metadata Section (Age, Language, Category)
           Padding(
@@ -183,7 +305,7 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
           const SizedBox(height: 40),
 
           // Description Section
-         if (info.description != null) ...[
+          if (info.description != null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 60),
               child: Column(
@@ -223,8 +345,13 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                _isDescriptionExpanded ? 'see_less'.tr() : 'see_more'.tr(),
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                _isDescriptionExpanded
+                                    ? 'see_less'.tr()
+                                    : 'see_more'.tr(),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
                                       color: Theme.of(context).colorScheme.primary,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -248,6 +375,7 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
             ),
             const SizedBox(height: 40),
           ],
+
           // Similar Videos Section
           if (info.recommendations.isNotEmpty) ...[
             Padding(
@@ -283,7 +411,7 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
                 ? Image.network(
                     thumbnailUrl,
                     fit: BoxFit.cover,
-                    filterQuality: FilterQuality.high, // High quality rendering
+                    filterQuality: FilterQuality.high,
                     errorBuilder: (_, __, ___) => Container(
                       color: Colors.grey[850],
                     ),
@@ -324,12 +452,14 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
               ),
             ),
           ),
-           // back Button
+
+          // Back Button
           Positioned(
             left: 20,
             top: 40,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, size: 32, color: Colors.white),
+              icon: const Icon(Icons.arrow_back_rounded,
+                  size: 32, color: Colors.white),
               onPressed: () => Navigator.of(context).pop(),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.black45,
@@ -368,69 +498,70 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
                 const SizedBox(height: 12),
 
                 // Channel Info
-              InkWell(
-  onTap: () {
-    if (info.uploader?.url != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChannelDetailsPage(
-            channelUrl: info.uploader!.url!,
-          ),
-        ),
-      );
-    }
-  },
-  child: MouseRegion(
-    cursor: SystemMouseCursors.click,
-    child: Row(
-      children: [
-        if (info.uploader?.thumbnails.isNotEmpty ?? false) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.network(
-              _getHighQualityThumbnail(info.uploader!.thumbnails) ??
-                  info.uploader!.thumbnails.first.url,
-              width: 40,
-              height: 40,
-              fit: BoxFit.cover,
-              filterQuality: FilterQuality.high,
-              errorBuilder: (_, __, ___) => Container(
-                width: 40,
-                height: 40,
-                color: Colors.grey[700],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-        ],
-        Text(
-          info.uploader?.name ?? 'unknown_channel'.tr(),
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                decoration: TextDecoration.underline,
-                decorationColor: Colors.white.withOpacity(0.5),
-              ),
-        ),
-        if (info.uploader?.verified ?? false) ...[
-          const SizedBox(width: 8),
-          const Icon(
-            Icons.verified,
-            color: Colors.blue,
-            size: 20,
-          ),
-        ],
-        const SizedBox(width: 8),
-        Icon(
-          Icons.arrow_forward_ios_rounded,
-          color: Colors.white.withOpacity(0.7),
-          size: 16,
-        ),
-      ],
-    ),
-  ),
-),
+                InkWell(
+                  onTap: () {
+                    if (info.uploader?.url != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChannelDetailsPage(
+                            channelUrl: info.uploader!.url!,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Row(
+                      children: [
+                        if (info.uploader?.thumbnails.isNotEmpty ?? false) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Image.network(
+                              _getHighQualityThumbnail(info.uploader!.thumbnails) ??
+                                  info.uploader!.thumbnails.first.url,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.high,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 40,
+                                height: 40,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Text(
+                          info.uploader?.name ?? 'unknown_channel'.tr(),
+                          style:
+                              Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: Colors.white.withOpacity(0.5),
+                                  ),
+                        ),
+                        if (info.uploader?.verified ?? false) ...[
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.verified,
+                            color: Colors.blue,
+                            size: 20,
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: Colors.white.withOpacity(0.7),
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 16),
 
@@ -475,9 +606,16 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
                         label: 'play'.tr(),
                         isFocused: _selectedButton == 0,
                         onPressed: () {
-                          // TODO: Implement play functionality
-                          // print stream URLs
+                          // 🆕 Simulate play (start tracking)
+                          _onVideoPlay();
                           
+                          // TODO: Implement actual video playback
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('▶️ Video playing (watch time tracking started)'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
                         },
                       ),
                     ),
@@ -575,7 +713,11 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
               Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).textTheme.bodyMedium!.color?.withOpacity(0.7),
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodyMedium!
+                          .color
+                          ?.withOpacity(0.7),
                     ),
               ),
               const SizedBox(height: 4),
@@ -593,88 +735,89 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
     );
   }
 
- Widget _buildDescription(
-  BuildContext context,
-  dynamic description, {
-  int? maxLines,
-}) {
-  final String content = description.content ?? '';
+  Widget _buildDescription(
+    BuildContext context,
+    dynamic description, {
+    int? maxLines,
+  }) {
+    final String content = description.content ?? '';
 
-  // Strip basic HTML tags and handle line breaks
-  String cleanedContent = content
-      .replaceAll(RegExp(r'<br\s*/?>'), '\n')
-      .replaceAll(RegExp(r'<p>'), '\n')
-      .replaceAll(RegExp(r'</p>'), '\n')
-      .replaceAll(RegExp(r'<[^>]*>'), '') // Remove remaining HTML tags
-      .replaceAll(RegExp(r'\n\n+'), '\n\n') // Clean up multiple line breaks
-      .trim();
+    // Strip basic HTML tags and handle line breaks
+    String cleanedContent = content
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<p>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'</p>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<[^>]*>'), '') // Remove remaining HTML tags
+        .replaceAll(RegExp(r'\n\n+'), '\n\n') // Clean up multiple line breaks
+        .trim();
 
-  // Find URLs in the text
-  final urlRegex = RegExp(
-    r'https?://[^\s]+',
-    caseSensitive: false,
-  );
+    // Find URLs in the text
+    final urlRegex = RegExp(
+      r'https?://[^\s]+',
+      caseSensitive: false,
+    );
 
-  final matches = urlRegex.allMatches(cleanedContent);
+    final matches = urlRegex.allMatches(cleanedContent);
 
-  if (matches.isEmpty) {
-    // No links, just show text
-    return Text(
-      cleanedContent,
-      style: Theme.of(context).textTheme.bodyMedium,
+    if (matches.isEmpty) {
+      // No links, just show text
+      return Text(
+        cleanedContent,
+        style: Theme.of(context).textTheme.bodyMedium,
+        maxLines: maxLines,
+        overflow: maxLines != null ? TextOverflow.ellipsis : TextOverflow.clip,
+      );
+    }
+
+    // Build RichText with clickable links
+    final spans = <TextSpan>[];
+    int lastMatchEnd = 0;
+
+    for (final match in matches) {
+      // Add text before the link
+      if (match.start > lastMatchEnd) {
+        spans.add(TextSpan(
+          text: cleanedContent.substring(lastMatchEnd, match.start),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ));
+      }
+
+      // Add the clickable link
+      final url = match.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              decoration: TextDecoration.underline,
+            ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri);
+            }
+          },
+      ));
+
+      lastMatchEnd = match.end;
+    }
+
+    // Add remaining text
+    if (lastMatchEnd < cleanedContent.length) {
+      spans.add(TextSpan(
+        text: cleanedContent.substring(lastMatchEnd),
+        style: Theme.of(context).textTheme.bodyMedium,
+      ));
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
       maxLines: maxLines,
       overflow: maxLines != null ? TextOverflow.ellipsis : TextOverflow.clip,
     );
   }
 
-  // Build RichText with clickable links
-  final spans = <TextSpan>[];
-  int lastMatchEnd = 0;
-
-  for (final match in matches) {
-    // Add text before the link
-    if (match.start > lastMatchEnd) {
-      spans.add(TextSpan(
-        text: cleanedContent.substring(lastMatchEnd, match.start),
-        style: Theme.of(context).textTheme.bodyMedium,
-      ));
-    }
-
-    // Add the clickable link
-    final url = match.group(0)!;
-    spans.add(TextSpan(
-      text: url,
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            decoration: TextDecoration.underline,
-          ),
-      recognizer: TapGestureRecognizer()
-        ..onTap = () async {
-          final uri = Uri.parse(url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri);
-          }
-        },
-    ));
-
-    lastMatchEnd = match.end;
-  }
-
-  // Add remaining text
-  if (lastMatchEnd < cleanedContent.length) {
-    spans.add(TextSpan(
-      text: cleanedContent.substring(lastMatchEnd),
-      style: Theme.of(context).textTheme.bodyMedium,
-    ));
-  }
-
-  return RichText(
-    text: TextSpan(children: spans),
-    maxLines: maxLines,
-    overflow: maxLines != null ? TextOverflow.ellipsis : TextOverflow.clip,
-  );
-}
- Widget _buildRecommendations(BuildContext context, StreamInfoModel info) {
+  Widget _buildRecommendations(BuildContext context, StreamInfoModel info) {
     return SizedBox(
       height: 220,
       child: ListView.builder(

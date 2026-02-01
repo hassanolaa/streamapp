@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:streamapp/core/di/service_locator.dart';
+import 'package:streamapp/features/videos/data/services/recommendation_service.dart';
+import 'package:streamapp/features/videos/data/models/summary_model.dart';
 import 'package:streamapp/features/videos/presentation/cubit/videos_cubit.dart';
 import 'package:streamapp/features/videos/presentation/cubit/videos_state.dart';
 import 'package:streamapp/features/videos/presentation/widgets/search_bar_widget.dart';
@@ -45,11 +47,34 @@ class _SearchPageContentState extends State<_SearchPageContent> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
       final state = context.read<VideosCubit>().state;
       if (state is VideosSearchSuccess && state.hasMore) {
         context.read<VideosCubit>().loadMoreVideos();
       }
+    }
+  }
+
+  // 🆕 Feed search results to recommendations
+  Future<void> _feedSearchResults(List<dynamic> items) async {
+    try {
+      final recommendationService = sl<RecommendationService>();
+      
+      // Filter only stream items
+      final streams = items
+          .where((item) => item is SummaryModel && item.type == 'stream')
+          .map((item) => (item as SummaryModel).data as StreamSummaryModel)
+          .toList();
+
+      if (streams.isNotEmpty) {
+        await recommendationService.feedFromSearchResults(
+          streams.take(8).toList(), // Top 8 results
+        );
+        print('✅ Fed ${streams.length} search results to recommendations');
+      }
+    } catch (e) {
+      print('⚠️ Failed to feed search results: $e');
     }
   }
 
@@ -91,7 +116,13 @@ class _SearchPageContentState extends State<_SearchPageContent> {
               ),
               const SizedBox(height: 32),
               Expanded(
-                child: BlocBuilder<VideosCubit, VideosState>(
+                child: BlocConsumer<VideosCubit, VideosState>(
+                  listener: (context, state) {
+                    // 🆕 Listen for search success and feed recommendations
+                    if (state is VideosSearchSuccess) {
+                      _feedSearchResults(state.allItems);
+                    }
+                  },
                   builder: (context, state) {
                     if (state is VideosInitial) {
                       return Center(
@@ -147,7 +178,7 @@ class _SearchPageContentState extends State<_SearchPageContent> {
                       final items = state is VideosSearchSuccess
                           ? state.allItems
                           : (state as VideosLoadingMore).currentItems;
-
+                      
                       return Column(
                         children: [
                           Padding(

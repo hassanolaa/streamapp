@@ -11,6 +11,7 @@ void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await GetStorage.init();
+  
   di.setupLocator();
   
   runApp(EasyLocalization(
