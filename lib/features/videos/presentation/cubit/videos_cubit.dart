@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:streamapp/features/videos/data/models/info_model.dart';
 import 'package:streamapp/features/videos/data/models/search_result_model.dart';
 import 'package:streamapp/features/videos/data/models/summary_model.dart';
 import 'package:streamapp/features/videos/data/repositories/videos_repository_impl.dart';
@@ -7,7 +8,7 @@ import 'package:streamapp/features/videos/presentation/cubit/videos_state.dart';
 class VideosCubit extends Cubit<VideosState> {
   final VideosRepository repository;
 
-  Map<String, String>? _currentPageTokens; // Track tokens per provider
+  Map<String, String>? _currentPageTokens;
   List<SummaryModel> _allItems = [];
   SearchResultModel? _lastSearchResult;
   String _lastQuery = '';
@@ -16,7 +17,11 @@ class VideosCubit extends Cubit<VideosState> {
   VideosCubit({required this.repository}) : super(VideosInitial());
 
   /// Search across multiple providers (YouTube + SoundCloud)
-  Future<void> searchVideos(String query, {List<String>? filters}) async {
+  Future<void> searchVideos(
+    String query, {
+    List<String>? filters,
+    String? sortCriteria,
+  }) async {
     try {
       emit(VideosLoading());
       _lastQuery = query;
@@ -25,11 +30,12 @@ class VideosCubit extends Cubit<VideosState> {
         _searchProviders,
         query,
         filters: filters,
+        sortCriteria: sortCriteria,
       );
 
       _lastSearchResult = result;
       _allItems = result.items.getSummaries();
-      
+
       // Parse page tokens from result
       _currentPageTokens = _parsePageTokens(result.items.nextPageToken);
 
@@ -50,9 +56,10 @@ class VideosCubit extends Cubit<VideosState> {
     try {
       emit(VideosLoadingMore(_allItems));
 
-      final moreItems = await repository.loadMoreMultipleProviders(_currentPageTokens!);
+      final moreItems =
+          await repository.loadMoreMultipleProviders(_currentPageTokens!);
       _allItems.addAll(moreItems.getSummaries());
-      
+
       // Update page tokens
       _currentPageTokens = _parsePageTokens(moreItems.nextPageToken);
 
@@ -89,6 +96,7 @@ class VideosCubit extends Cubit<VideosState> {
       emit(VideosLoading());
       final info = await repository.getStreamInfo(url);
       print('Fetched stream info: $info');
+      print('Available streams: ${info}');
       emit(VideosStreamInfoSuccess(info));
     } catch (e) {
       emit(VideosError(e.toString()));
@@ -132,4 +140,35 @@ class VideosCubit extends Cubit<VideosState> {
       emit(VideosError(e.toString()));
     }
   }
+
+  Map<String, List<PlaylistInfoModel>> _allCatalogs = {};
+
+/// Load all available catalogs
+Future<void> loadCatalogs() async {
+  try {
+    emit(VideosLoading());
+
+    // Get available catalog providers
+    final catalogProviders = await repository.getCatalogs();
+    
+    final catalogs = <String, List<PlaylistInfoModel>>{};
+
+    // Load catalogs from each provider
+    for (final provider in catalogProviders) {
+      try {
+        final catalogContent = await repository.getCatalog(provider);
+        if (catalogContent.isNotEmpty) {
+          catalogs[provider] = catalogContent;
+        }
+      } catch (e) {
+        print('Warning: Failed to load catalog from $provider: $e');
+      }
+    }
+
+    _allCatalogs = catalogs;
+    emit(VideosCatalogsLoaded(catalogs));
+  } catch (e) {
+    emit(VideosError(e.toString()));
+  }
+}
 }

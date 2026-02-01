@@ -82,3 +82,13 @@ class VideosSearchHistoryLoaded extends VideosState {
   @override
   List<Object?> get props => [history];
 }
+
+
+class VideosCatalogsLoaded extends VideosState {
+  final Map<String, List<PlaylistInfoModel>> catalogs;
+
+  VideosCatalogsLoaded(this.catalogs);
+
+  @override
+  List<Object?> get props => [catalogs];
+}
