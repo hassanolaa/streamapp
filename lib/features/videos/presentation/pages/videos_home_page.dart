@@ -45,16 +45,11 @@ class VideosHomePageState extends State<VideosHomePage> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final recommendationService = sl<RecommendationService>();
 
-        // Feed from Live catalog
-        // final liveVideos = mergedCatalogs['Live'];
-        // if (liveVideos != null && liveVideos.isNotEmpty) {
-        //   await recommendationService.feedFromCatalog(liveVideos, 'Live');
-        // }
-
-        // Feed from Trending if exists
-        final trendingVideos = mergedCatalogs['Trending'];
-        if (trendingVideos != null) {
-          await recommendationService.feedFromCatalog(trendingVideos, 'Trending');
+        // Feed from Trending if exists (only top 3)
+        final trendingVideos = mergedCatalogs['Trending']?.take(3).toList();
+        if (trendingVideos != null && trendingVideos.isNotEmpty) {
+          await recommendationService.feedFromCatalog(
+              trendingVideos, 'Trending');
         }
 
         if (!mounted) return;
@@ -98,6 +93,7 @@ class _VideosHomeContent extends StatefulWidget {
 class _VideosHomeContentState extends State<_VideosHomeContent> {
   final FocusNode _focusNode = FocusNode();
   final List<GlobalKey> _catalogKeys = [];
+  final ScrollController _scrollController = ScrollController(); // 🆕 Added ScrollController
 
   // Static references for parent access
   static FocusNode? _currentFocusNode;
@@ -115,6 +111,7 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
     _currentFocusNode = null;
     _currentScrollToCatalog = null;
     _focusNode.dispose();
+    _scrollController.dispose(); // 🆕 Dispose ScrollController
     super.dispose();
   }
 
@@ -146,21 +143,15 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
 
   void _scrollToCatalog(int catalogIndex) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
-      if (catalogIndex < 0 || catalogIndex >= _catalogKeys.length) {
-        return;
-      }
+      if (catalogIndex < 0 || catalogIndex >= _catalogKeys.length) return;
 
       try {
         final key = _catalogKeys[catalogIndex];
         final BuildContext? keyContext = key.currentContext;
 
-        if (keyContext == null) {
-          return;
-        }
+        if (keyContext == null) return;
 
         Scrollable.ensureVisible(
           keyContext,
@@ -169,8 +160,7 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
           alignment: 0.15,
         );
       } catch (e) {
-        print(
-            '❌ [_VideosHomeContent] Error scrolling to catalog $catalogIndex: $e');
+        print('❌ [_VideosHomeContent] Error scrolling to catalog $catalogIndex: $e');
       }
     });
   }
@@ -179,17 +169,13 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
-      try {
-        final scrollableState = Scrollable.of(context);
-        if (scrollableState != null) {
-          scrollableState.position.animateTo(
-            0.0,
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOutCubic,
-          );
-        }
-      } catch (e) {
-        print('❌ [_VideosHomeContent] Error scrolling to top: $e');
+      // 🆕 Use ScrollController to scroll to top
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
       }
     });
   }
@@ -233,24 +219,23 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
       final state = context.read<VideosCubit>().state;
       if (state is VideosCatalogsLoaded) {
         final mergedCatalogs = _mergeCatalogs(state.catalogs);
-        
+
         // Get recommendations and build final catalog list
         final recommendationService = sl<RecommendationService>();
         final recommendations = recommendationService.getRecommendations();
-        
+
         final Map<String, List<StreamSummaryModel>> finalCatalogs;
         if (recommendations.isNotEmpty) {
-          final recommendedVideos = recommendations
-              .map((r) => r.toStreamSummary())
-              .toList();
+          final recommendedVideos =
+              recommendations.map((r) => r.toStreamSummary()).toList();
           finalCatalogs = {
-            '⭐ Recommended for You': recommendedVideos,
+            'Recommended for You': recommendedVideos,
             ...mergedCatalogs,
           };
         } else {
           finalCatalogs = mergedCatalogs;
         }
-        
+
         final catalogList = finalCatalogs.entries.toList();
 
         if (focusManager.currentCatalogIndex < catalogList.length) {
@@ -332,7 +317,7 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
           if (state is VideosCatalogsLoaded) {
             final mergedCatalogs = _mergeCatalogs(state.catalogs);
 
-            // 🆕 Get recommendations and ADD to mergedCatalogs at the START
+            // Get recommendations and ADD to mergedCatalogs at the START
             final recommendationService = sl<RecommendationService>();
             final recommendations = recommendationService.getRecommendations();
 
@@ -342,14 +327,13 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
 
             if (recommendations.isNotEmpty) {
               // Convert recommendations to StreamSummaryModel list
-              final recommendedVideos = recommendations
-                  .map((r) => r.toStreamSummary())
-                  .toList();
+              final recommendedVideos =
+                  recommendations.map((r) => r.toStreamSummary()).toList();
 
-              // 🎯 Create NEW map with recommendations FIRST
+              // Create NEW map with recommendations FIRST
               finalCatalogs = {
-                '⭐ Recommended for You': recommendedVideos,
-                ...mergedCatalogs, // Spread existing catalogs after
+                'Recommended for You': recommendedVideos,
+                ...mergedCatalogs,
               };
 
               print('📊 [VideosHomePage] Final catalogs count: ${finalCatalogs.length}');
@@ -360,7 +344,7 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
               print('📊 [VideosHomePage] No recommendations, using ${finalCatalogs.length} catalogs');
             }
 
-            // 🆕 Use finalCatalogs for building UI
+            // Use finalCatalogs for building UI
             return _buildCatalogsView(context, finalCatalogs);
           }
 
@@ -370,7 +354,7 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
     );
   }
 
-  // 🆕 Extract catalog view building to separate method
+  // 🆕 Wrap content in SingleChildScrollView
   Widget _buildCatalogsView(
     BuildContext context,
     Map<String, List<StreamSummaryModel>> catalogs,
@@ -427,32 +411,36 @@ class _VideosHomeContentState extends State<_VideosHomeContent> {
       print('🎮 [VideosHomePage] Focus manager initialized with ${catalogSizes.length} catalogs');
     });
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const CatalogHeroSection(),
-        const SizedBox(height: 40),
+    // 🔥 Wrap Column in SingleChildScrollView
+    return SingleChildScrollView(
+      controller: _scrollController,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const CatalogHeroSection(),
+          const SizedBox(height: 40),
 
-        // ✅ ALL CATALOGS (INCLUDING RECOMMENDATIONS IF EXISTS)
-        ...catalogs.entries.toList().asMap().entries.map((entry) {
-          final catalogIndex = entry.key;
-          final catalogEntry = entry.value;
+          // ALL CATALOGS (INCLUDING RECOMMENDATIONS IF EXISTS)
+          ...catalogs.entries.toList().asMap().entries.map((entry) {
+            final catalogIndex = entry.key;
+            final catalogEntry = entry.value;
 
-          return Column(
-            key: _catalogKeys[catalogIndex],
-            children: [
-              VideosCatalogRow(
-                catalogName: catalogEntry.key,
-                videos: catalogEntry.value,
-                catalogIndex: catalogIndex,
-              ),
-              const SizedBox(height: 32),
-            ],
-          );
-        }).toList(),
+            return Column(
+              key: _catalogKeys[catalogIndex],
+              children: [
+                VideosCatalogRow(
+                  catalogName: catalogEntry.key,
+                  videos: catalogEntry.value,
+                  catalogIndex: catalogIndex,
+                ),
+                const SizedBox(height: 32),
+              ],
+            );
+          }).toList(),
 
-        const SizedBox(height: 40),
-      ],
+          const SizedBox(height: 40),
+        ],
+      ),
     );
   }
 }

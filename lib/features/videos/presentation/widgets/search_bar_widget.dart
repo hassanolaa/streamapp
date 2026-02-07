@@ -6,317 +6,134 @@ import 'package:streamapp/features/videos/presentation/cubit/videos_cubit.dart';
 
 class SearchBarWidget extends StatefulWidget {
   final FocusNode focusNode;
+  final VoidCallback? onSearchSubmitted;
+  final VoidCallback? onEscapePressed;
+  final TextEditingController? controller;
 
-  const SearchBarWidget({super.key, required this.focusNode});
+  const SearchBarWidget({
+    super.key,
+    required this.focusNode,
+    this.onSearchSubmitted,
+    this.onEscapePressed,
+    this.controller,
+  });
 
   @override
   State<SearchBarWidget> createState() => _SearchBarWidgetState();
 }
 
 class _SearchBarWidgetState extends State<SearchBarWidget> {
-  final TextEditingController _controller = TextEditingController();
-  List<String> _selectedFilters = [];
-  String? _selectedSort;
-  bool _showAdvancedOptions = false;
+  late TextEditingController _controller;
+  late FocusNode _textFieldFocusNode; // 🆕 Separate focus node for TextField
+  bool _isFocused = false;
 
-  // Available filters (from YouTube API)
-  final List<String> _availableFilters = [
-    'all',
-    'videos',
-    'channels',
-    'playlists',
-    'music_songs',
-    'music_videos',
-    'music_albums',
-    'music_playlists',
-  ];
-
-  // Available sort options (from YouTube API)
-  final List<String> _availableSortOptions = [
-    'relevance',
-    'upload_date',
-    'view_count',
-    'rating',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget.controller ?? TextEditingController();
+    _textFieldFocusNode = FocusNode(); // 🆕
+    
+    widget.focusNode.addListener(_onFocusChange);
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    widget.focusNode.removeListener(_onFocusChange);
+    _textFieldFocusNode.dispose(); // 🆕
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
     super.dispose();
+  }
+
+  void _onFocusChange() {
+    setState(() {
+      _isFocused = widget.focusNode.hasFocus;
+    });
+
+    // 🆕 When SearchBar gets focus, automatically focus the TextField
+    if (_isFocused) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _textFieldFocusNode.requestFocus();
+      });
+    }
   }
 
   void _performSearch() {
     final query = _controller.text.trim();
     if (query.isNotEmpty) {
-      // Search with filters and sort
-      context.read<VideosCubit>().searchVideos(
-            query,
-            filters: _selectedFilters.isNotEmpty ? _selectedFilters : null,
-            sortCriteria: _selectedSort,
-          );
-    }
-  }
+      context.read<VideosCubit>().searchVideos(query);
 
-  void _toggleFilter(String filter) {
-    setState(() {
-      if (_selectedFilters.contains(filter)) {
-        _selectedFilters.remove(filter);
-      } else {
-        _selectedFilters.add(filter);
+      if (widget.onSearchSubmitted != null) {
+        widget.onSearchSubmitted!();
       }
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Main search row
-        Row(
-          children: [
-            // Search Input
-            Expanded(
-              child: Focus(
-                focusNode: widget.focusNode,
-                onKeyEvent: (node, event) {
-                  if (event is KeyDownEvent &&
-                      event.logicalKey == LogicalKeyboardKey.enter) {
-                    _performSearch();
-                    return KeyEventResult.handled;
-                  }
-                  return KeyEventResult.ignored;
-                },
-                child: TextField(
-                  controller: _controller,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  decoration: InputDecoration(
-                    hintText: 'search_hint'.tr(),
-                    hintStyle: Theme.of(context).textTheme.bodyMedium,
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: Theme.of(context).textTheme.bodyMedium!.color,
-                    ),
-                    suffixIcon: _selectedFilters.isNotEmpty || _selectedSort != null
-                        ? Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.filter_list_rounded,
-                                  size: 16,
-                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${_selectedFilters.length + (_selectedSort != null ? 1 : 0)}',
-                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: Theme.of(context).colorScheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.primary,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  onSubmitted: (_) => _performSearch(),
-                ),
-              ),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: _isFocused
+            ? Border.all(
+                color: Theme.of(context).colorScheme.primary,
+                width: 3,
+              )
+            : null,
+      ),
+      child: Focus(
+        focusNode: widget.focusNode,
+        // 🆕 Only handle Escape and Arrow keys here, let TextField handle text input
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            // Only intercept Escape and navigation keys
+            if (event.logicalKey == LogicalKeyboardKey.escape) {
+              if (widget.onEscapePressed != null) {
+                widget.onEscapePressed!();
+              }
+              return KeyEventResult.handled;
+            }
+            // Let arrow keys bubble up for navigation
+            if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                event.logicalKey == LogicalKeyboardKey.arrowRight ||
+                event.logicalKey == LogicalKeyboardKey.arrowUp ||
+                event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              return KeyEventResult.ignored; // Let parent handle
+            }
+          }
+          return KeyEventResult.ignored; // Let TextField handle all other keys
+        },
+        child: TextField(
+          controller: _controller,
+          focusNode: _textFieldFocusNode, // 🆕 Use separate focus node
+          style: Theme.of(context).textTheme.bodyLarge,
+          decoration: InputDecoration(
+            hintText: 'search_hint'.tr(),
+            hintStyle: Theme.of(context).textTheme.bodyMedium,
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: Theme.of(context).textTheme.bodyMedium!.color,
             ),
-            const SizedBox(width: 16),
-
-            // Advanced Options Toggle
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  _showAdvancedOptions = !_showAdvancedOptions;
-                });
-              },
-              icon: Icon(
-                _showAdvancedOptions ? Icons.expand_less : Icons.tune_rounded,
-              ),
-              tooltip: 'Advanced Options',
-              style: IconButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                foregroundColor: _showAdvancedOptions
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
-                padding: const EdgeInsets.all(20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-
-            // Search Button
-            ElevatedButton.icon(
-              onPressed: _performSearch,
-              icon: const Icon(Icons.search_rounded),
-              label: Text('search'.tr()),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        // Advanced Options Panel
-        if (_showAdvancedOptions) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surface,
+            border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-              ),
+              borderSide: BorderSide.none,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Filters Section
-                Row(
-                  children: [
-                    Icon(
-                      Icons.filter_list_rounded,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Filters',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    const Spacer(),
-                    if (_selectedFilters.isNotEmpty)
-                      TextButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _selectedFilters.clear();
-                          });
-                        },
-                        icon: const Icon(Icons.clear_rounded, size: 16),
-                        label: const Text('Clear'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _availableFilters.map((filter) {
-                    final isSelected = _selectedFilters.contains(filter);
-                    return FilterChip(
-                      label: Text(filter.replaceAll('_', ' ').toUpperCase()),
-                      selected: isSelected,
-                      onSelected: (selected) => _toggleFilter(filter),
-                      backgroundColor: Theme.of(context).colorScheme.surface,
-                      selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                      checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
-                      labelStyle: TextStyle(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.onPrimaryContainer
-                            : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-
-                const SizedBox(height: 20),
-                const Divider(),
-                const SizedBox(height: 20),
-
-                // Sort Section
-                Row(
-                  children: [
-                    Icon(
-                      Icons.sort_rounded,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Sort By',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    const Spacer(),
-                    if (_selectedSort != null)
-                      TextButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _selectedSort = null;
-                          });
-                        },
-                        icon: const Icon(Icons.clear_rounded, size: 16),
-                        label: const Text('Clear'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _availableSortOptions.map((sort) {
-                    final isSelected = _selectedSort == sort;
-                    return ChoiceChip(
-                      label: Text(sort.replaceAll('_', ' ').toUpperCase()),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setState(() {
-                          _selectedSort = selected ? sort : null;
-                        });
-                      },
-                      backgroundColor: Theme.of(context).colorScheme.surface,
-                      selectedColor: Theme.of(context).colorScheme.secondaryContainer,
-                      labelStyle: TextStyle(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.onSecondaryContainer
-                            : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
             ),
           ),
-        ],
-      ],
+          onSubmitted: (_) => _performSearch(),
+        ),
+      ),
     );
   }
 }

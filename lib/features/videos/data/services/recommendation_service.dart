@@ -172,7 +172,7 @@ class RecommendationService {
         score: 70.0, // High score from video detail page
         source: RecommendationSource.streamRecommendations,
       );
-    }).toList();
+    }).take(1).toList(); // Limit to 1 recommendation
 
     await addRecommendations(recommendations.take(10).toList());
     print('✅ Fed ${recommendations.length} recommendations from StreamInfo');

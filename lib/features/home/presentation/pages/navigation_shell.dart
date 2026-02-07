@@ -16,11 +16,9 @@ class _NavigationShellState extends State<NavigationShell> {
 
   final List<_NavItem> _navItems = [
     _NavItem(icon: Icons.home_rounded, label: 'home'),
-    _NavItem(icon: Icons.explore_rounded, label: 'browse'),
     _NavItem(icon: Icons.video_library_rounded, label: 'watch_list'),
     _NavItem(icon: Icons.download_rounded, label: 'downloads'),
     _NavItem(icon: Icons.settings_rounded, label: 'settings'),
-    _NavItem(icon: Icons.help_rounded, label: 'help'),
   ];
 
   @override

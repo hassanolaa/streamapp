@@ -17,18 +17,17 @@ class CategoryFilterWidget extends StatefulWidget {
   State<CategoryFilterWidget> createState() => CategoryFilterWidgetState();
 }
 
-// Made PUBLIC (no underscore) so GlobalKey can access it
 class CategoryFilterWidgetState extends State<CategoryFilterWidget> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 0; // Currently selected (active) category
+  int _focusedIndex = 0; // Currently focused (previewed) item
   final List<FocusNode> _focusNodes = List.generate(9, (_) => FocusNode());
   final ScrollController _scrollController = ScrollController();
-  
+
   final List<String> _categories = [
     'all',
     'videos',
     'movies',
     'series',
-    'tv_shows',
     'podcasts',
     'iptv',
     'live_channels',
@@ -58,6 +57,7 @@ class CategoryFilterWidgetState extends State<CategoryFilterWidget> {
     if (videosIndex != -1) {
       setState(() {
         _selectedIndex = videosIndex;
+        _focusedIndex = videosIndex;
       });
       _scrollToIndex(videosIndex);
       _focusNodes[videosIndex].requestFocus();
@@ -66,11 +66,11 @@ class CategoryFilterWidgetState extends State<CategoryFilterWidget> {
 
   void _scrollToIndex(int index) {
     if (!_scrollController.hasClients) return;
-    
+
     final itemWidth = 140.0;
     final screenWidth = MediaQuery.of(context).size.width;
     final offset = (index * itemWidth) - (screenWidth / 2) + 70;
-    
+
     _scrollController.animateTo(
       offset.clamp(0, _scrollController.position.maxScrollExtent),
       duration: const Duration(milliseconds: 300),
@@ -78,62 +78,70 @@ class CategoryFilterWidgetState extends State<CategoryFilterWidget> {
     );
   }
 
-  void _onCategorySelected(int index) {
+  // 🆕 Move focus (preview) without selecting
+  void _moveFocus(int index) {
     if (index < 0 || index > _categories.length) return;
-    
-    
-    setState(() => _selectedIndex = index);
-    
+
+    setState(() => _focusedIndex = index);
+
     if (index < _categories.length) {
       _scrollToIndex(index);
       _focusNodes[index].requestFocus();
-      
-      // Notify parent
-      if (widget.onCategoryChanged != null) {
-        widget.onCategoryChanged!(_categories[index]);
-      }
     } else {
       // Search button focused
       _focusNodes[_categories.length].requestFocus();
+    }
+
+    print('👁️ Preview focus on: ${index < _categories.length ? _categories[index] : "search"}');
+  }
+
+  // 🆕 Actually select the focused item
+  void _selectFocusedItem() {
+    if (_focusedIndex == _categories.length) {
+      // Search button selected
+      _onSearchPressed();
+      return;
+    }
+
+    if (_focusedIndex < _categories.length) {
+      setState(() => _selectedIndex = _focusedIndex);
+
+      // Notify parent
+      if (widget.onCategoryChanged != null) {
+        widget.onCategoryChanged!(_categories[_selectedIndex]);
+      }
+
+      print('✅ Selected: ${_categories[_selectedIndex]}');
     }
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    
-    
+
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      if (_selectedIndex > 0) {
-        _onCategorySelected(_selectedIndex - 1);
+      if (_focusedIndex > 0) {
+        _moveFocus(_focusedIndex - 1);
         return KeyEventResult.handled;
       }
     } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-      if (_selectedIndex < _categories.length) {
-        _onCategorySelected(_selectedIndex + 1);
+      if (_focusedIndex < _categories.length) {
+        _moveFocus(_focusedIndex + 1);
         return KeyEventResult.handled;
       }
     } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      
-      // Navigate down to video content (only when "videos" tab is selected)
+      // Navigate down to video content (only when currently selected category is "videos")
       if (_selectedIndex == _categories.indexOf('videos')) {
-        
         if (widget.onNavigateDown != null) {
           widget.onNavigateDown!();
           return KeyEventResult.handled;
-        } else {
         }
-      } else {
       }
     } else if (event.logicalKey == LogicalKeyboardKey.enter ||
         event.logicalKey == LogicalKeyboardKey.select) {
-      if (_selectedIndex == _categories.length) {
-        _onSearchPressed();
-      } else {
-        _onCategorySelected(_selectedIndex);
-      }
+      _selectFocusedItem();
       return KeyEventResult.handled;
     }
-    
+
     return KeyEventResult.ignored;
   }
 
@@ -155,7 +163,8 @@ class CategoryFilterWidgetState extends State<CategoryFilterWidget> {
                 itemBuilder: (context, index) {
                   final category = _categories[index];
                   final isSelected = _selectedIndex == index;
-                  
+                  final isFocused = _focusedIndex == index;
+
                   return Padding(
                     padding: const EdgeInsets.only(right: 12),
                     child: Focus(
@@ -164,8 +173,20 @@ class CategoryFilterWidgetState extends State<CategoryFilterWidget> {
                       child: _SimpleCategoryChip(
                         label: category.tr(),
                         isSelected: isSelected,
-                        isFocused: _focusNodes[index].hasFocus,
-                        onTap: () => _onCategorySelected(index),
+                        isFocused: isFocused,
+                        onTap: () {
+                          // On click, both focus and select
+                          setState(() {
+                            _focusedIndex = index;
+                            _selectedIndex = index;
+                          });
+                          _scrollToIndex(index);
+                          _focusNodes[index].requestFocus();
+
+                          if (widget.onCategoryChanged != null) {
+                            widget.onCategoryChanged!(_categories[index]);
+                          }
+                        },
                       ),
                     ),
                   );
@@ -173,15 +194,15 @@ class CategoryFilterWidgetState extends State<CategoryFilterWidget> {
               ),
             ),
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // Search Button
           Focus(
             focusNode: _focusNodes[_categories.length],
             onKeyEvent: _handleKeyEvent,
             child: _SimpleSearchButton(
-              isFocused: _selectedIndex == _categories.length,
+              isFocused: _focusedIndex == _categories.length,
               onPressed: _onSearchPressed,
             ),
           ),
@@ -216,7 +237,7 @@ class _SimpleCategoryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(28),
@@ -224,21 +245,24 @@ class _SimpleCategoryChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
+          // 🆕 Selected = filled with primary color
+          // Focused (preview) = outlined
           color: isSelected
               ? theme.colorScheme.primary
               : theme.colorScheme.surfaceVariant.withOpacity(0.5),
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
-            color: isFocused
+            // 🆕 Show border when focused but not selected
+            color: isFocused && !isSelected
                 ? theme.colorScheme.primary
                 : Colors.transparent,
-            width: 2,
+            width: 3,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Focus indicator (arrow)
+            // 🆕 Arrow indicator when focused but not selected
             if (isFocused && !isSelected)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -248,7 +272,18 @@ class _SimpleCategoryChip extends StatelessWidget {
                   color: theme.colorScheme.primary,
                 ),
               ),
-            
+
+            // Checkmark when selected AND focused
+            if (isSelected && isFocused)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+
             Text(
               label,
               style: TextStyle(
@@ -278,7 +313,7 @@ class _SimpleSearchButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(28),
@@ -287,21 +322,17 @@ class _SimpleSearchButton extends StatelessWidget {
         width: 56,
         height: 56,
         decoration: BoxDecoration(
-          color: isFocused
-              ? theme.colorScheme.primary
-              : theme.colorScheme.surfaceVariant.withOpacity(0.5),
+          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
           shape: BoxShape.circle,
           border: Border.all(
-            color: isFocused
-                ? theme.colorScheme.primary
-                : Colors.transparent,
-            width: 2,
+            color: isFocused ? theme.colorScheme.primary : Colors.transparent,
+            width: 3,
           ),
         ),
         child: Icon(
           Icons.search_rounded,
           color: isFocused
-              ? Colors.white
+              ? theme.colorScheme.primary
               : theme.textTheme.bodyMedium?.color,
           size: 24,
         ),

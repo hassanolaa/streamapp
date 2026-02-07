@@ -15,7 +15,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String _selectedCategory = 'all';
   final GlobalKey<VideosHomePageState> _videosHomeKey = GlobalKey();
-  final GlobalKey<CategoryFilterWidgetState> _categoryFilterKey = GlobalKey(); 
+  final GlobalKey<CategoryFilterWidgetState> _categoryFilterKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -31,7 +31,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onNavigateDownFromCategory() {
-  
     // When DOWN is pressed on category filter, focus videos
     if (_selectedCategory == 'videos') {
       if (_videosHomeKey.currentState != null) {
@@ -45,7 +44,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onNavigateUpFromVideos() {
-    
     // Scroll to top using our ScrollController
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -69,27 +67,20 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    
-    return SingleChildScrollView(
-      controller: _scrollController,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 20),
-          
-          // Category Filter (Always visible)
-          CategoryFilterWidget(
-            key: _categoryFilterKey,
-            onCategoryChanged: _onCategoryChanged,
-            onNavigateDown: _onNavigateDownFromCategory,
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // Dynamic content based on selected category
-          _buildCategoryContent(),
-        ],
-      ),
+    return Column(
+      children: [
+        // 🔥 Category Filter (Fixed at top, NOT scrollable)
+        CategoryFilterWidget(
+          key: _categoryFilterKey,
+          onCategoryChanged: _onCategoryChanged,
+          onNavigateDown: _onNavigateDownFromCategory,
+        ),
+
+        // 🔥 Content area (Scrollable, fills remaining space)
+        Expanded(
+          child: _buildCategoryContent(),
+        ),
+      ],
     );
   }
 
@@ -120,55 +111,56 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildAllContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const HeroCarouselWidget(),
-        const SizedBox(height: 40),
-        ContentRowWidget(title: 'popular'.tr()),
-        const SizedBox(height: 32),
-        ContentRowWidget(title: 'continue_watching'.tr()),
-        const SizedBox(height: 32),
-        ContentRowWidget(title: 'new_releases'.tr()),
-        const SizedBox(height: 32),
-        ContentRowWidget(title: 'trending_now'.tr()),
-        const SizedBox(height: 40),
-      ],
+    return SingleChildScrollView(
+      controller: _scrollController,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const HeroCarouselWidget(),
+          const SizedBox(height: 40),
+          ContentRowWidget(title: 'popular'.tr()),
+          const SizedBox(height: 32),
+          ContentRowWidget(title: 'continue_watching'.tr()),
+          const SizedBox(height: 32),
+          ContentRowWidget(title: 'new_releases'.tr()),
+          const SizedBox(height: 32),
+          ContentRowWidget(title: 'trending_now'.tr()),
+          const SizedBox(height: 40),
+        ],
+      ),
     );
   }
 
   Widget _buildComingSoon(String feature) {
-    return Padding(
-      padding: const EdgeInsets.all(60.0),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.upcoming_rounded,
-              size: 80,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '$feature - Coming Soon',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'This feature is under development',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context)
-                        .textTheme
-                        .bodyLarge
-                        ?.color
-                        ?.withOpacity(0.6),
-                  ),
-            ),
-          ],
-        ),
+    // 🔥 Use Center to fill the Expanded space
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.upcoming_rounded,
+            size: 80,
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '$feature - Coming Soon',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'This feature is under development',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.color
+                      ?.withOpacity(0.6),
+                ),
+          ),
+        ],
       ),
     );
   }
