@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:streamapp/core/di/service_locator.dart' as di;
 import 'package:streamapp/core/theme/app_theme.dart';
 import 'package:streamapp/features/home/presentation/pages/navigation_shell.dart';
@@ -9,6 +10,7 @@ import 'package:streamapp/test_videos_page.dart';
 void main() async{
 
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await GetStorage.init();
   

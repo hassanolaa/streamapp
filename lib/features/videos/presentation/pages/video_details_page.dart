@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:streamapp/core/di/service_locator.dart';
+import 'package:streamapp/features/video_player/presentation/pages/video_detection_screen.dart';
 import 'package:streamapp/features/videos/data/models/info_model.dart';
 import 'package:streamapp/features/videos/data/models/summary_model.dart';
 import 'package:streamapp/features/videos/data/services/recommendation_service.dart';
@@ -80,9 +81,10 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
     print('⏱️ Watch timer started');
   }
 
-  void _onVideoPlay() {
-    setState(() => _isPlaying = true);
-    print('▶️ Video playing - tracking watch time');
+  void _onVideoPlay(StreamInfoModel info) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => 
+    VideoDetectionScreen(videoJson: info.toJson(),)
+    ));
   }
 
   void _onVideoPause() {
@@ -252,13 +254,8 @@ KeyEventResult _handleNavigation(KeyEvent event) {
       // Activate the focused button
       if (_focusedButtonIndex == 0) {
         // Play button
-        _onVideoPlay();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('▶️ Video playing (watch time tracking started)'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        _onVideoPlay(_streamInfo!);
+      
       } else if (_focusedButtonIndex == 1) {
         // Favorites button
         ScaffoldMessenger.of(context).showSnackBar(
@@ -895,14 +892,8 @@ KeyEventResult _handleNavigation(KeyEvent event) {
                         isFocused:
                             _focusedSection == 2 && _focusedButtonIndex == 0,
                         onPressed: () {
-                          _onVideoPlay();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  '▶️ Video playing (watch time tracking started)'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
+                          _onVideoPlay(_streamInfo!);
+                         
                         },
                       ),
                     ),
