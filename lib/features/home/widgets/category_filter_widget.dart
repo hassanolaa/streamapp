@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:streamapp/features/home/presentation/pages/home_page.dart';
 import 'package:streamapp/features/videos/presentation/pages/search_page.dart';
 
 class CategoryFilterWidget extends StatefulWidget {

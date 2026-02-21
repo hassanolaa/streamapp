@@ -170,6 +170,22 @@ class StreamInfoModel {
       'subtitles': subtitles.map((e) => e.toJson()).toList(),
     };
   }
+
+StreamSummaryModel toStreamSummary() {
+  return StreamSummaryModel(
+    name: name,
+    url: url,
+    thumbnails: thumbnails,
+    service: service,
+    streamType: type,
+    duration: duration,
+    views: viewCount,
+    uploadDateUnixEpoch: uploadTimeStamp,
+    description: description,
+    uploader: uploader,
+  );
+}
+
 }
 
 class PlaylistInfoModel {

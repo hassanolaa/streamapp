@@ -3,7 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:streamapp/features/home/widgets/category_filter_widget.dart';
 import 'package:streamapp/features/home/widgets/content_row_widget.dart';
 import 'package:streamapp/features/home/widgets/hero_carousel_widget.dart';
+import 'package:streamapp/features/videos/presentation/pages/podcasts_home_page.dart';
 import 'package:streamapp/features/videos/presentation/pages/videos_home_page.dart';
+
+String globalselectedCategory = 'all';
+ List<String>? globalSearchProvidersSelector(){
+    switch(globalselectedCategory){
+      case 'podcasts':
+        return ['podcastindex'];
+      case 'videos':
+        return ['youtube', 'soundcloud'];
+      default:
+        return null; // Search all providers
+        }
+  }
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,7 +26,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String _selectedCategory = 'all';
   final GlobalKey<VideosHomePageState> _videosHomeKey = GlobalKey();
   final GlobalKey<CategoryFilterWidgetState> _categoryFilterKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
@@ -26,13 +38,13 @@ class _HomePageState extends State<HomePage> {
 
   void _onCategoryChanged(String category) {
     setState(() {
-      _selectedCategory = category;
+      globalselectedCategory = category;
     });
   }
 
   void _onNavigateDownFromCategory() {
     // When DOWN is pressed on category filter, focus videos
-    if (_selectedCategory == 'videos') {
+    if (globalselectedCategory == 'videos') {
       if (_videosHomeKey.currentState != null) {
         _videosHomeKey.currentState!.requestVideoFocus();
       } else {
@@ -85,7 +97,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCategoryContent() {
-    switch (_selectedCategory) {
+    switch (globalselectedCategory) {
       case 'all':
         return _buildAllContent();
       case 'videos':
@@ -100,7 +112,7 @@ class _HomePageState extends State<HomePage> {
       case 'tv_shows':
         return _buildComingSoon('TV Shows');
       case 'podcasts':
-        return _buildComingSoon('Podcasts');
+        return PodcastsHomePage();
       case 'iptv':
         return _buildComingSoon('IPTV');
       case 'live_channels':

@@ -3,22 +3,22 @@ import 'package:streamapp/features/videos/data/models/info_model.dart';
 import 'package:streamapp/features/videos/data/models/search_result_model.dart';
 import 'package:streamapp/features/videos/data/models/summary_model.dart';
 
-abstract class VideosState extends Equatable {
+abstract class PodcastState extends Equatable {
   @override
   List<Object?> get props => [];
 }
 
-class VideosInitial extends VideosState {}
+class PodcastInitial extends PodcastState {}
 
-class VideosLoading extends VideosState {}
+class PodcastLoading extends PodcastState {}
 
-class VideosSearchSuccess extends VideosState {
+class PodcastSearchSuccess extends PodcastState {
   final SearchResultModel? searchResult;
   final List<SummaryModel> allItems;
   final bool hasMore;
   final Map<String, String>? pageTokens; // Track tokens per provider
 
-  VideosSearchSuccess({
+  PodcastSearchSuccess({
     this.searchResult,
     required this.allItems,
     this.hasMore = false,
@@ -29,74 +29,65 @@ class VideosSearchSuccess extends VideosState {
   List<Object?> get props => [searchResult, allItems, hasMore, pageTokens];
 }
 
-class VideosLoadingMore extends VideosState {
+class PodcastLoadingMore extends PodcastState {
   final List<SummaryModel> currentItems;
 
-  VideosLoadingMore(this.currentItems);
+  PodcastLoadingMore(this.currentItems);
 
   @override
   List<Object?> get props => [currentItems];
 }
 
-class VideosStreamInfoSuccess extends VideosState {
+class PodcastStreamInfoSuccess extends PodcastState {
   final StreamInfoModel streamInfo;
 
-  VideosStreamInfoSuccess(this.streamInfo);
+  PodcastStreamInfoSuccess(this.streamInfo);
 
   @override
   List<Object?> get props => [streamInfo];
 }
 
-class VideosPlaylistInfoSuccess extends VideosState {
+class PodcastPlaylistInfoSuccess extends PodcastState {
   final PlaylistInfoModel playlistInfo;
 
-  VideosPlaylistInfoSuccess(this.playlistInfo);
+  PodcastPlaylistInfoSuccess(this.playlistInfo);
 
   @override
   List<Object?> get props => [playlistInfo];
 }
 
-class VideosChannelInfoSuccess extends VideosState {
+class PodcastChannelInfoSuccess extends PodcastState {
   final ChannelInfoModel channelInfo;
 
-  VideosChannelInfoSuccess(this.channelInfo);
+  PodcastChannelInfoSuccess(this.channelInfo);
 
   @override
   List<Object?> get props => [channelInfo];
 }
 
-class VideosError extends VideosState {
+class PodcastError extends PodcastState {
   final String message;
 
-  VideosError(this.message);
+  PodcastError(this.message);
 
   @override
   List<Object?> get props => [message];
 }
 
-class VideosSearchHistoryLoaded extends VideosState {
+class PodcastSearchHistoryLoaded extends PodcastState {
   final List<String> history;
 
-  VideosSearchHistoryLoaded(this.history);
+  PodcastSearchHistoryLoaded(this.history);
 
   @override
   List<Object?> get props => [history];
 }
 
 
-class VideosCatalogsLoaded extends VideosState {
+class PodcastCatalogsLoaded extends PodcastState {
   final Map<String, List<PlaylistInfoModel>> catalogs;
 
-  VideosCatalogsLoaded(this.catalogs);
-
-  @override
-  List<Object?> get props => [catalogs];
-}
-
-class VideosPodcastCatalogsLoaded extends VideosState {
-  final Map<String, List<PlaylistSummaryModel>> catalogs;
-
-   VideosPodcastCatalogsLoaded({required this.catalogs});
+  PodcastCatalogsLoaded(this.catalogs);
 
   @override
   List<Object?> get props => [catalogs];

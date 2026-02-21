@@ -17,13 +17,28 @@ import 'package:url_launcher/url_launcher.dart';
 
 class VideoDetailsPage extends StatelessWidget {
   final String videoUrl;
+  final StreamInfoModel? streamInfo; // 🆕 Optional pre-loaded data
 
-  const VideoDetailsPage({super.key, required this.videoUrl});
+  const VideoDetailsPage({
+    super.key, 
+    required this.videoUrl,
+    this.streamInfo,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => VideosCubit(repository: sl())..getStreamInfo(videoUrl),
+      create: (_) {
+        final cubit = VideosCubit(repository: sl());
+        // 🆕 Only fetch if streamInfo is not provided
+        if (streamInfo == null) {
+          cubit.getStreamInfo(videoUrl);
+        } else {
+          // Emit the pre-loaded data immediately
+          cubit.emitStreamInfoSuccess(streamInfo!);
+        }
+        return cubit;
+      },
       child: _VideoDetailsContent(videoUrl: videoUrl),
     );
   }

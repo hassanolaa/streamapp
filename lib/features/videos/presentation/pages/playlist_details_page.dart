@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:streamapp/core/di/service_locator.dart';
 import 'package:streamapp/features/videos/data/models/info_model.dart';
+import 'package:streamapp/features/videos/data/models/summary_model.dart';
 import 'package:streamapp/features/videos/presentation/cubit/videos_cubit.dart';
 import 'package:streamapp/features/videos/presentation/cubit/videos_state.dart';
 import 'package:streamapp/features/videos/presentation/pages/channel_details_page.dart';
+import 'package:streamapp/features/videos/presentation/pages/video_details_page.dart';
 import 'package:streamapp/features/videos/presentation/widgets/video_card_widget.dart';
 
 class PlaylistDetailsPage extends StatelessWidget {
@@ -32,18 +34,15 @@ class _PlaylistDetailsContent extends StatefulWidget {
 }
 
 class _PlaylistDetailsContentState extends State<_PlaylistDetailsContent> {
-  // 🆕 Enhanced focus management
   int _focusedSection = 0; // 0=back, 1=uploader, 2=playAll, 3=videos
   int _focusedVideoIndex = 0;
 
   final FocusNode _backButtonFocusNode = FocusNode();
   final FocusNode _uploaderButtonFocusNode = FocusNode();
   final FocusNode _playAllButtonFocusNode = FocusNode();
-  late List<FocusNode> _videoFocusNodes;
+  List<FocusNode> _videoFocusNodes = [];
   final ScrollController _scrollController = ScrollController();
   final ScrollController _videosScrollController = ScrollController();
-
-  bool _isDescriptionExpanded = false;
 
   @override
   void initState() {
@@ -97,6 +96,50 @@ class _PlaylistDetailsContentState extends State<_PlaylistDetailsContent> {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
     );
+  }
+
+  // Helper method to get all items (items or detailedItems)
+  List<SummaryModel> _getAllItems(PlaylistInfoModel? playlist) {
+    if (playlist == null) return [];
+    
+    List<SummaryModel> items = playlist.items?.items ?? [];
+    if (items.isEmpty && (playlist.items?.detailedItems.isNotEmpty ?? false)) {
+      items = playlist.items!.detailedItems
+          .map((d) => SummaryModel(
+                type: "stream",
+                data: d.toStreamSummary(),
+              ))
+          .toList();
+    }
+    return items;
+  }
+
+  // 🆕 Helper to get detailed item if available
+  StreamInfoModel? _getDetailedItem(PlaylistInfoModel? playlist, int index) {
+    if (playlist == null || playlist.items?.detailedItems == null) return null;
+    
+    // Check if we're using detailedItems
+    final items = playlist.items?.items ?? [];
+    if (items.isEmpty && (playlist.items!.detailedItems.length > index)) {
+      StreamInfoModel detailedItem = StreamInfoModel(thumbnails: playlist.items!.detailedItems[index].thumbnails,
+       recommendations: playlist.items!.detailedItems .map((d) => SummaryModel(
+                type: "stream",
+                data: d.toStreamSummary(),
+              ))
+          .toList(), tags: [], chapters: [], previewFrames:playlist.items!.detailedItems[index].previewFrames , 
+          videoStreams: playlist.items!.detailedItems[index].videoStreams, 
+          audioStreams: playlist.items!.detailedItems[index].audioStreams, 
+          videoOnlyStreams: playlist.items!.detailedItems[index].videoOnlyStreams,
+          subtitles: playlist.items!.detailedItems[index].subtitles,
+          url: playlist.items!.detailedItems[index].url,
+          name: playlist.items!.detailedItems[index].name
+          
+          );
+      
+      return detailedItem;
+    }
+    
+    return null;
   }
 
   // 🆕 Navigation handler
@@ -175,9 +218,9 @@ class _PlaylistDetailsContentState extends State<_PlaylistDetailsContent> {
         }
         return KeyEventResult.handled;
       } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-        // Go to videos
-        final items = playlist.items?.items ?? [];
-        if (items.isNotEmpty) {
+        // Go to videos - use helper method to get all items
+        final items = _getAllItems(playlist);
+        if (items.isNotEmpty && _videoFocusNodes.isNotEmpty) {
           setState(() {
             _focusedSection = 3;
             _focusedVideoIndex = 0;
@@ -198,21 +241,25 @@ class _PlaylistDetailsContentState extends State<_PlaylistDetailsContent> {
     }
     // Section 3: Videos
     else if (_focusedSection == 3) {
-      final items = playlist.items?.items ?? [];
+      final items = _getAllItems(playlist);
       final maxIndex = items.length - 1;
 
       if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
         if (_focusedVideoIndex > 0) {
           setState(() => _focusedVideoIndex--);
-          _videoFocusNodes[_focusedVideoIndex].requestFocus();
-          _scrollToVideo(_focusedVideoIndex);
+          if (_focusedVideoIndex < _videoFocusNodes.length) {
+            _videoFocusNodes[_focusedVideoIndex].requestFocus();
+            _scrollToVideo(_focusedVideoIndex);
+          }
           return KeyEventResult.handled;
         }
       } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
         if (_focusedVideoIndex < maxIndex) {
           setState(() => _focusedVideoIndex++);
-          _videoFocusNodes[_focusedVideoIndex].requestFocus();
-          _scrollToVideo(_focusedVideoIndex);
+          if (_focusedVideoIndex < _videoFocusNodes.length) {
+            _videoFocusNodes[_focusedVideoIndex].requestFocus();
+            _scrollToVideo(_focusedVideoIndex);
+          }
           return KeyEventResult.handled;
         }
       } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
@@ -221,15 +268,30 @@ class _PlaylistDetailsContentState extends State<_PlaylistDetailsContent> {
         _playAllButtonFocusNode.requestFocus();
         return KeyEventResult.handled;
       } else if (event.logicalKey == LogicalKeyboardKey.enter) {
-        // Open video/playlist
-        final item = items[_focusedVideoIndex];
-        if (item.type.toLowerCase() == 'playlist' && item.data.url != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => PlaylistDetailsPage(playlistUrl: item.data.url!),
-            ),
-          );
+        // Open video/playlist with detailed info if available
+        if (_focusedVideoIndex < items.length) {
+          final item = items[_focusedVideoIndex];
+          final detailedInfo = _getDetailedItem(playlist, _focusedVideoIndex);
+          print('${detailedInfo!.toJson()}"}');
+          
+          if (item.type.toLowerCase() == 'stream' && item.data.url != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VideoDetailsPage(
+                  videoUrl: item.data.url!,
+                  streamInfo: detailedInfo, // 🆕 Pass detailed info if available
+                ),
+              ),
+            );
+          } else if (item.type.toLowerCase() == 'playlist' && item.data.url != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PlaylistDetailsPage(playlistUrl: item.data.url!),
+              ),
+            );
+          }
         }
         return KeyEventResult.handled;
       }
@@ -335,7 +397,7 @@ class _PlaylistDetailsContentState extends State<_PlaylistDetailsContent> {
           const SizedBox(height: 40),
 
           // Playlist Items Section
-          if (playlist.items?.items.isNotEmpty ?? false) ...[
+          if ((playlist.items?.items.isNotEmpty ?? false) || (playlist.items?.detailedItems.isNotEmpty ?? false)) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 60),
               child: Text(
@@ -668,7 +730,16 @@ class _PlaylistDetailsContentState extends State<_PlaylistDetailsContent> {
   }
 
   Widget _buildPlaylistItems(BuildContext context, PlaylistInfoModel playlist) {
-    final items = playlist.items?.items ?? [];
+    List<SummaryModel> items = _getAllItems(playlist);
+
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Initialize video focus nodes if needed
+    if (_videoFocusNodes.length != items.length) {
+      _videoFocusNodes = List.generate(items.length, (_) => FocusNode());
+    }
 
     return SizedBox(
       height: 220,
@@ -679,6 +750,8 @@ class _PlaylistDetailsContentState extends State<_PlaylistDetailsContent> {
         physics: const NeverScrollableScrollPhysics(),
         itemCount: items.length,
         itemBuilder: (context, index) {
+          final detailedInfo = _getDetailedItem(playlist, index);
+          
           return Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Focus(
@@ -688,6 +761,7 @@ class _PlaylistDetailsContentState extends State<_PlaylistDetailsContent> {
                 child: VideoCardWidget(
                   summary: items[index],
                   isFocused: _focusedSection == 3 && _focusedVideoIndex == index,
+                  detailedInfo: detailedInfo, // 🆕 Pass detailed info
                   onTap: items[index].type.toLowerCase() == 'playlist' &&
                           items[index].data.url != null
                       ? () {

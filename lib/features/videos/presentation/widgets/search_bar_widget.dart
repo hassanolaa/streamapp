@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:streamapp/features/home/presentation/pages/home_page.dart';
 import 'package:streamapp/features/videos/presentation/cubit/videos_cubit.dart';
 
 class SearchBarWidget extends StatefulWidget {
@@ -62,7 +63,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   void _performSearch() {
     final query = _controller.text.trim();
     if (query.isNotEmpty) {
-      context.read<VideosCubit>().searchVideos(query);
+      context.read<VideosCubit>().searchVideos(query,provider: globalSearchProvidersSelector());
 
       if (widget.onSearchSubmitted != null) {
         widget.onSearchSubmitted!();

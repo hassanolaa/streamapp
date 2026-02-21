@@ -3,34 +3,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:streamapp/core/di/service_locator.dart';
-import 'package:streamapp/features/home/presentation/pages/home_page.dart';
+import 'package:streamapp/features/podcasts/persentation/cubit/podcasts_cubit.dart';
+import 'package:streamapp/features/podcasts/persentation/cubit/podcasts_state.dart';
 import 'package:streamapp/features/videos/data/services/recommendation_service.dart';
 import 'package:streamapp/features/videos/data/models/summary_model.dart';
-import 'package:streamapp/features/videos/presentation/cubit/videos_cubit.dart';
-import 'package:streamapp/features/videos/presentation/cubit/videos_state.dart';
 import 'package:streamapp/features/videos/presentation/widgets/search_bar_widget.dart';
 import 'package:streamapp/features/videos/presentation/widgets/video_grid_widget.dart';
 
-class SearchPage extends StatelessWidget {
-  const SearchPage({super.key});
+class PodcastsSearchPage extends StatelessWidget {
+  const PodcastsSearchPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => VideosCubit(repository: sl()),
-      child: const _SearchPageContent(),
+      create: (_) => PodcastCubit(repository: sl()),
+      child: const _PodcastsSearchPageContent(),
     );
   }
 }
 
-class _SearchPageContent extends StatefulWidget {
-  const _SearchPageContent();
+class _PodcastsSearchPageContent extends StatefulWidget {
+  const _PodcastsSearchPageContent();
 
   @override
-  State<_SearchPageContent> createState() => _SearchPageContentState();
+  State<_PodcastsSearchPageContent> createState() => _PodcastsSearchPageContentState();
 }
 
-class _SearchPageContentState extends State<_SearchPageContent> {
+class _PodcastsSearchPageContentState extends State<_PodcastsSearchPageContent> {
   final FocusNode _searchFocusNode = FocusNode();
   final FocusNode _backButtonFocusNode = FocusNode();
   final FocusNode _filtersButtonFocusNode = FocusNode();
@@ -83,9 +82,9 @@ class _SearchPageContentState extends State<_SearchPageContent> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent * 0.8) {
-      final state = context.read<VideosCubit>().state;
-      if (state is VideosSearchSuccess && state.hasMore) {
-        context.read<VideosCubit>().loadMoreVideos();
+      final state = context.read<PodcastCubit>().state;
+      if (state is PodcastSearchSuccess && state.hasMore) {
+        context.read<PodcastCubit>().loadMorePodcast();
       }
     }
   }
@@ -110,7 +109,6 @@ class _SearchPageContentState extends State<_SearchPageContent> {
     }
   }
 
-  
   void _performSearch() {
     final query = _searchController.text.trim();
     print('🔍 Performing search: "$query"');
@@ -118,11 +116,10 @@ class _SearchPageContentState extends State<_SearchPageContent> {
     print('🔢 Sort: $_selectedSort');
     
     if (query.isNotEmpty) {
-      context.read<VideosCubit>().searchVideos(
+      context.read<PodcastCubit>().searchPodcast(
             query,
             filters: _selectedFilters.isNotEmpty ? _selectedFilters : null,
             sortCriteria: _selectedSort,
-            provider: globalSearchProvidersSelector()
           );
 
       // Focus grid after search
@@ -458,81 +455,70 @@ class _SearchPageContentState extends State<_SearchPageContent> {
   );
 }
 
- KeyEventResult _handleTopBarNavigation(KeyEvent event) {
-  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+  KeyEventResult _handleTopBarNavigation(KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-  // 🔥 FIX: If grid is focused, let it handle navigation
-  if (_gridFocusNode.hasFocus) {
-    // Only intercept Escape to return to search bar
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
-      _searchFocusNode.requestFocus();
-      setState(() => _topBarFocusedIndex = 1);
-      return KeyEventResult.handled;
+    // 🆕 Don't intercept when search field is focused (let it handle text input)
+    if (_topBarFocusedIndex == 1) {
+      // Only handle navigation keys, let search field handle everything else
+      if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+        setState(() => _topBarFocusedIndex = 0);
+        _focusTopBarItem(0);
+        return KeyEventResult.handled;
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+        setState(() => _topBarFocusedIndex = 2);
+        _focusTopBarItem(2);
+        return KeyEventResult.handled;
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        final state = context.read<PodcastCubit>().state;
+        if (state is PodcastSearchSuccess || state is PodcastLoadingMore) {
+          _gridFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+      }
+      return KeyEventResult.ignored; // Let search field handle
     }
-    return KeyEventResult.ignored; // Let grid handle all other keys
-  }
 
-  // Don't intercept when search field is focused (let it handle text input)
-  if (_topBarFocusedIndex == 1) {
-    // Only handle navigation keys, let search field handle everything else
+    // Handle navigation for other buttons
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      setState(() => _topBarFocusedIndex = 0);
-      _focusTopBarItem(0);
-      return KeyEventResult.handled;
+      if (_topBarFocusedIndex > 0) {
+        setState(() => _topBarFocusedIndex--);
+        _focusTopBarItem(_topBarFocusedIndex);
+        return KeyEventResult.handled;
+      }
     } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-      setState(() => _topBarFocusedIndex = 2);
-      _focusTopBarItem(2);
-      return KeyEventResult.handled;
+      if (_topBarFocusedIndex < 3) {
+        setState(() => _topBarFocusedIndex++);
+        _focusTopBarItem(_topBarFocusedIndex);
+        return KeyEventResult.handled;
+      }
     } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      final state = context.read<VideosCubit>().state;
-      if (state is VideosSearchSuccess || state is VideosLoadingMore) {
+      final state = context.read<PodcastCubit>().state;
+      if (state is PodcastSearchSuccess || state is PodcastLoadingMore) {
         _gridFocusNode.requestFocus();
         return KeyEventResult.handled;
       }
-    }
-    return KeyEventResult.ignored; // Let search field handle
-  }
-
-  // Handle navigation for other buttons
-  if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-    if (_topBarFocusedIndex > 0) {
-      setState(() => _topBarFocusedIndex--);
-      _focusTopBarItem(_topBarFocusedIndex);
-      return KeyEventResult.handled;
-    }
-  } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-    if (_topBarFocusedIndex < 3) {
-      setState(() => _topBarFocusedIndex++);
-      _focusTopBarItem(_topBarFocusedIndex);
-      return KeyEventResult.handled;
-    }
-  } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-    final state = context.read<VideosCubit>().state;
-    if (state is VideosSearchSuccess || state is VideosLoadingMore) {
-      _gridFocusNode.requestFocus();
-      return KeyEventResult.handled;
-    }
-  } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-    Navigator.of(context).pop();
-    return KeyEventResult.handled;
-  } else if (event.logicalKey == LogicalKeyboardKey.enter ||
-      event.logicalKey == LogicalKeyboardKey.space) {
-    // Activate focused button
-    if (_topBarFocusedIndex == 0) {
-      print('⬅️ Back button pressed');
+    } else if (event.logicalKey == LogicalKeyboardKey.escape) {
       Navigator.of(context).pop();
-    } else if (_topBarFocusedIndex == 2) {
-      print('🎛️ Filters button pressed');
-      _showFiltersDialog();
-    } else if (_topBarFocusedIndex == 3) {
-      print('🔍 Search button pressed');
-      _performSearch();
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.space) {
+      // 🆕 Activate focused button
+      if (_topBarFocusedIndex == 0) {
+        print('⬅️ Back button pressed');
+        Navigator.of(context).pop();
+      } else if (_topBarFocusedIndex == 2) {
+        print('🎛️ Filters button pressed');
+        _showFiltersDialog();
+      } else if (_topBarFocusedIndex == 3) {
+        print('🔍 Search button pressed');
+        _performSearch();
+      }
+      return KeyEventResult.handled;
     }
-    return KeyEventResult.handled;
-  }
 
-  return KeyEventResult.ignored;
-}
+    return KeyEventResult.ignored;
+  }
 
   void _focusTopBarItem(int index) {
     switch (index) {
@@ -744,14 +730,14 @@ class _SearchPageContentState extends State<_SearchPageContent> {
 
               // Results Grid
               Expanded(
-                child: BlocConsumer<VideosCubit, VideosState>(
+                child: BlocConsumer<PodcastCubit, PodcastState>(
                   listener: (context, state) {
-                    if (state is VideosSearchSuccess) {
+                    if (state is PodcastSearchSuccess) {
                       _feedSearchResults(state.allItems);
                     }
                   },
                   builder: (context, state) {
-                    if (state is VideosInitial) {
+                    if (state is PodcastInitial) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -771,11 +757,11 @@ class _SearchPageContentState extends State<_SearchPageContent> {
                       );
                     }
 
-                    if (state is VideosLoading) {
+                    if (state is PodcastLoading) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    if (state is VideosError) {
+                    if (state is PodcastError) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -801,10 +787,10 @@ class _SearchPageContentState extends State<_SearchPageContent> {
                       );
                     }
 
-                    if (state is VideosSearchSuccess || state is VideosLoadingMore) {
-                      final items = state is VideosSearchSuccess
+                    if (state is PodcastSearchSuccess || state is PodcastLoadingMore) {
+                      final items = state is PodcastSearchSuccess
                           ? state.allItems
-                          : (state as VideosLoadingMore).currentItems;
+                          : (state as PodcastLoadingMore).currentItems;
 
                       return Column(
                         children: [
@@ -836,7 +822,7 @@ class _SearchPageContentState extends State<_SearchPageContent> {
                               },
                             ),
                           ),
-                          if (state is VideosLoadingMore)
+                          if (state is PodcastLoadingMore)
                             const Padding(
                               padding: EdgeInsets.all(16.0),
                               child: CircularProgressIndicator(),
@@ -855,8 +841,6 @@ class _SearchPageContentState extends State<_SearchPageContent> {
       ),
     );
   }
-
-
 }
 
 class _BackIntent extends Intent {

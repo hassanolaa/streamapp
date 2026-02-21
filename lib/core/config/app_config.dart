@@ -1,66 +1,61 @@
 import 'dart:io';
 
 class AppConfig {
-  // Tuber JAR path configuration
-  static String getTuberJarPath() {
+  // Tuber binary path configuration
+  static String getTuberPath() {
     // Check environment variable first
-    final envPath = Platform.environment['TUBER_JAR_PATH'];
+    final envPath = Platform.environment['TUBER_PATH'];
     if (envPath != null && envPath.isNotEmpty) {
       return envPath;
     }
 
     // Default paths based on platform
     if (Platform.isLinux) {
-      return '/home/hassanola/flutterProjects/streamapp/tuber/tuber.jar'; // Or wherever you install it
+      return '/home/hassanola/flutterProjects/streamapp/tuber/bin/tuber';
     } else if (Platform.isMacOS) {
-      return '/usr/local/bin/tuber.jar';
+      return '/usr/local/bin/tuber';
     } else if (Platform.isWindows) {
-      return 'C:\\Program Files\\tuber\\tuber.jar';
+      return 'C:\\Program Files\\tuber\\bin\\tuber.bat';
     }
 
-    // Fallback to current directory
-    return './tuber.jar';
+    // Fallback to PATH
+    return 'tuber';
   }
 
-
-    // Get Java path (for compatibility with Tuber)
-  static String? getJavaPath() {
+  // Get Java home directory (for tuber binary environment)
+  static String? getJavaHome() {
     // First, try SDKMAN current Java (your terminal setup)
-    const sdkmanPath = '/home/hassanola/.sdkman/candidates/java/current/bin/java';
-    if (File(sdkmanPath).existsSync()) {
+    const sdkmanPath = '/home/hassanola/.sdkman/candidates/java/current';
+    if (Directory(sdkmanPath).existsSync()) {
       print('Using SDKMAN Java: $sdkmanPath');
       return sdkmanPath;
     }
 
-    // Check environment variable (usually not available in Flutter)
+    // Check environment variable
     final envPath = Platform.environment['JAVA_HOME'];
-    if (envPath != null && envPath.isNotEmpty) {
-      final javaExec = '$envPath/bin/java';
-      if (File(javaExec).existsSync()) {
-        print('Using JAVA_HOME: $javaExec');
-        return javaExec;
-      }
+    if (envPath != null && envPath.isNotEmpty && Directory(envPath).existsSync()) {
+      print('Using JAVA_HOME: $envPath');
+      return envPath;
     }
 
     // Try to find Java 21+ in common Linux locations
     final possiblePaths = [
-      '/usr/lib/jvm/java-25-openjdk-amd64/bin/java',
-      '/usr/lib/jvm/java-23-openjdk-amd64/bin/java',
-      '/usr/lib/jvm/java-21-openjdk-amd64/bin/java',
-      '/usr/lib/jvm/default-java/bin/java',
+      '/usr/lib/jvm/java-25-openjdk-amd64',
+      '/usr/lib/jvm/java-23-openjdk-amd64',
+      '/usr/lib/jvm/java-21-openjdk-amd64',
+      '/usr/lib/jvm/default-java',
     ];
 
     for (final path in possiblePaths) {
-      if (File(path).existsSync()) {
+      if (Directory(path).existsSync()) {
         print('Using system Java: $path');
         return path;
       }
     }
 
-    print('Using default system Java');
-    return null; // Use system default
+    print('No specific JAVA_HOME found, using system default');
+    return null;
   }
-
 
   // You can add other app configurations here
   static const String appName = 'Stream App';

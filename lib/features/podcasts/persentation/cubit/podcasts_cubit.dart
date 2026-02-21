@@ -1,33 +1,34 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:streamapp/features/podcasts/persentation/cubit/podcasts_state.dart';
 import 'package:streamapp/features/videos/data/models/info_model.dart';
 import 'package:streamapp/features/videos/data/models/search_result_model.dart';
 import 'package:streamapp/features/videos/data/models/summary_model.dart';
 import 'package:streamapp/features/videos/data/repositories/videos_repository_impl.dart';
 import 'package:streamapp/features/videos/presentation/cubit/videos_state.dart';
 
-class VideosCubit extends Cubit<VideosState> {
+class PodcastCubit extends Cubit<PodcastState> {
   final VideosRepository repository;
 
   Map<String, String>? _currentPageTokens;
   List<SummaryModel> _allItems = [];
   SearchResultModel? _lastSearchResult;
   String _lastQuery = '';
-  final List<String> _searchProviders = ['podcastindex']; //['youtube', 'soundcloud'];
+  final List<String> _searchProviders = ['podcastindex'];
 
-  VideosCubit({required this.repository}) : super(VideosInitial());
+  PodcastCubit({required this.repository}) : super(PodcastInitial());
 
   /// Search across multiple providers (YouTube + SoundCloud)
-  Future<void> searchVideos(
+  Future<void> searchPodcast(
     String query, {
     List<String>? filters,
     String? sortCriteria,
-    List<String>? provider, // Optional provider filter (e.g. "youtube" or "soundcloud")
   }) async {
     try {
-      emit(VideosLoading());
+      emit(PodcastLoading());
       _lastQuery = query;
+
       final result = await repository.searchMultipleProviders(
-       provider!=null? provider : _searchProviders,
+        _searchProviders,
         query,
         filters: filters,
         sortCriteria: sortCriteria,
@@ -39,22 +40,22 @@ class VideosCubit extends Cubit<VideosState> {
       // Parse page tokens from result
       _currentPageTokens = _parsePageTokens(result.items.nextPageToken);
 
-      emit(VideosSearchSuccess(
+      emit(PodcastSearchSuccess(
         searchResult: result,
         allItems: _allItems,
         hasMore: _currentPageTokens != null && _currentPageTokens!.isNotEmpty,
         pageTokens: _currentPageTokens,
       ));
     } catch (e) {
-      emit(VideosError(e.toString()));
+      emit(PodcastError(e.toString()));
     }
   }
 
-  Future<void> loadMoreVideos() async {
+  Future<void> loadMorePodcast() async {
     if (_currentPageTokens == null || _currentPageTokens!.isEmpty) return;
 
     try {
-      emit(VideosLoadingMore(_allItems));
+      emit(PodcastLoadingMore(_allItems));
 
       final moreItems =
           await repository.loadMoreMultipleProviders(_currentPageTokens!);
@@ -63,14 +64,14 @@ class VideosCubit extends Cubit<VideosState> {
       // Update page tokens
       _currentPageTokens = _parsePageTokens(moreItems.nextPageToken);
 
-      emit(VideosSearchSuccess(
+      emit(PodcastSearchSuccess(
         searchResult: _lastSearchResult,
         allItems: _allItems,
         hasMore: _currentPageTokens != null && _currentPageTokens!.isNotEmpty,
         pageTokens: _currentPageTokens,
       ));
     } catch (e) {
-      emit(VideosError(e.toString()));
+      emit(PodcastError(e.toString()));
     }
   }
 
@@ -93,56 +94,51 @@ class VideosCubit extends Cubit<VideosState> {
 
   Future<void> getStreamInfo(String url) async {
     try {
-      emit(VideosLoading());
+      emit(PodcastLoading());
       final info = await repository.getStreamInfo(url);
       print('Fetched stream info: $info');
       print('Available streams: ${info}');
-      emit(VideosStreamInfoSuccess(info));
+      emit(PodcastStreamInfoSuccess(info));
     } catch (e) {
-      emit(VideosError(e.toString()));
+      emit(PodcastError(e.toString()));
     }
-  }
-
-  // 🆕 Method to emit pre-loaded stream info without API call
-  void emitStreamInfoSuccess(StreamInfoModel streamInfo) {
-    emit(VideosStreamInfoSuccess(streamInfo));
   }
 
   Future<void> getPlaylistInfo(String url) async {
     try {
-      emit(VideosLoading());
+      emit(PodcastLoading());
       final info = await repository.getPlaylistInfo(url);
-      emit(VideosPlaylistInfoSuccess(info));
+      emit(PodcastPlaylistInfoSuccess(info));
     } catch (e) {
-      emit(VideosError(e.toString()));
+      emit(PodcastError(e.toString()));
     }
   }
 
   Future<void> getChannelInfo(String url) async {
     try {
-      emit(VideosLoading());
+      emit(PodcastLoading());
       final info = await repository.getChannelInfo(url);
-      emit(VideosChannelInfoSuccess(info));
+      emit(PodcastChannelInfoSuccess(info));
     } catch (e) {
-      emit(VideosError(e.toString()));
+      emit(PodcastError(e.toString()));
     }
   }
 
   Future<void> loadSearchHistory() async {
     try {
       final history = await repository.getSearchHistory();
-      emit(VideosSearchHistoryLoaded(history));
+      emit(PodcastSearchHistoryLoaded(history));
     } catch (e) {
-      emit(VideosError(e.toString()));
+      emit(PodcastError(e.toString()));
     }
   }
 
   Future<void> clearSearchHistory() async {
     try {
       await repository.clearSearchHistory();
-      emit(VideosSearchHistoryLoaded([]));
+      emit(PodcastSearchHistoryLoaded([]));
     } catch (e) {
-      emit(VideosError(e.toString()));
+      emit(PodcastError(e.toString()));
     }
   }
 
@@ -151,7 +147,7 @@ class VideosCubit extends Cubit<VideosState> {
 /// Load all available catalogs
 Future<void> loadCatalogs() async {
   try {
-    emit(VideosLoading());
+    emit(PodcastLoading());
 
     // Get available catalog providers
     final catalogProviders = await repository.getCatalogs();
@@ -171,70 +167,9 @@ Future<void> loadCatalogs() async {
     }
 
     _allCatalogs = catalogs;
-    emit(VideosCatalogsLoaded(catalogs));
+    emit(PodcastCatalogsLoaded(catalogs));
   } catch (e) {
-    emit(VideosError(e.toString()));
-  }
-}
-
-final List<String> _podcastTopics = [
-  'Sports',
-  'News',
-  'Technology',
-  'Comedy',
-  'True Crime',
-];
-
-/// Load podcast catalogs by searching multiple topics in parallel
-Future<void> loadPodcastCatalogs() async {
-  try {
-    emit(VideosLoading());
-    print('🎙️ [VideosCubit] Loading podcast catalogs...');
-
-    // 🔥 Search all topics in parallel using Future.wait
-    final searchFutures = _podcastTopics.map((topic) async {
-      try {
-        print('🔍 Searching: $topic');
-        
-        final result = await repository.searchMultipleProviders(
-          _searchProviders,
-          topic,
-        );
-print('🔍 Search completed for: $topic, total items: ${result.items.getSummaries().length}');
-        // Extract streams from search results
-        final streams = result.items.getSummaries()
-            .map((item) => (item as SummaryModel).data as PlaylistSummaryModel)
-            .take(20) // Limit to 20 podcasts per topic
-            .toList();
-
-        print('✅ Found ${streams.length} podcasts for: $topic');
-        
-        return MapEntry(topic, streams);
-      } catch (e) {
-        print('❌ Error searching $topic: $e');
-        return MapEntry(topic, <PlaylistSummaryModel>[]);
-      }
-    }).toList();
-
-    // Wait for all searches to complete
-    final results = await Future.wait(searchFutures);
-
-    // Build catalogs map, filtering out empty results
-    final Map<String, List<PlaylistSummaryModel>> catalogs = Map.fromEntries(
-      results.where((entry) => entry.value.isNotEmpty),
-    );
-
-    print('📊 [VideosCubit] Loaded ${catalogs.length} podcast catalogs');
-    
-    if (catalogs.isEmpty) {
-      emit(VideosError('No podcasts found'));
-      return;
-    }
-
-    emit(VideosPodcastCatalogsLoaded(catalogs: catalogs));
-  } catch (e) {
-    print('❌ [VideosCubit] Error loading podcast catalogs: $e');
-    emit(VideosError(e.toString()));
+    emit(PodcastError(e.toString()));
   }
 }
 }

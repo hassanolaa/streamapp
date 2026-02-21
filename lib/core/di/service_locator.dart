@@ -1,5 +1,3 @@
-
-
 // Create a global instance of GetIt
 import 'package:get_it/get_it.dart';
 import 'package:get_storage/get_storage.dart';
@@ -29,8 +27,7 @@ void setupLocator() async{
 // Data Sources
 sl.registerLazySingleton<VideosRemoteDataSource>(
   () => VideosRemoteDataSourceImpl(
-    tuberJarPath: AppConfig.getTuberJarPath(),
-      javaPath: AppConfig.getJavaPath(),
+    tuberPath: AppConfig.getTuberPath(),
   ),
 );
 
