@@ -18,29 +18,6 @@ void main() async{
   await EasyLocalization.ensureInitialized();
   await GetStorage.init();
 
- final process = await Process.start(
-  "printenv",
-  ["PATH"],
-  runInShell: true,
-);
-
-// Read stdout
-final stdoutString = await process.stdout.transform(utf8.decoder).join();
-
-// Read stderr
-final stderrString = await process.stderr.transform(utf8.decoder).join();
-
-// Wait for exit
-final exitCode = await process.exitCode;
-
-if (exitCode != 0) {
-  print('❌ Exit code: $exitCode');
-  print('stderr: $stderrString');
-  throw TuberException(stderrString);
-}
-
-print('✅ tuber is accessible:\n$stdoutString');
-
 
   di.setupLocator();
   

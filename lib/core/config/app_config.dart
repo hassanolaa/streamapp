@@ -57,6 +57,18 @@ class AppConfig {
     return null;
   }
 
+  // TMDB API key configuration
+  static String getTmdbApiKey() {
+    // Check environment variable first
+    final envKey = Platform.environment['TMDB_API_KEY'];
+    if (envKey != null && envKey.isNotEmpty) {
+      return envKey;
+    }
+
+    // Default API key (replace with your own TMDB API key)
+    return '23519c9370544566e64e5212c0dc2dd4';
+  }
+
   // You can add other app configurations here
   static const String appName = 'Stream App';
   static const String appVersion = '1.0.0';

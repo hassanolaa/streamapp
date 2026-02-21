@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:streamapp/features/home/presentation/pages/home_page.dart';
+import 'package:streamapp/features/movies/presentation/pages/movies_search_page.dart';
+import 'package:streamapp/features/series/presentation/pages/series_search_page.dart';
 import 'package:streamapp/features/videos/presentation/pages/search_page.dart';
 
 class CategoryFilterWidget extends StatefulWidget {
@@ -213,12 +215,28 @@ class CategoryFilterWidgetState extends State<CategoryFilterWidget> {
   }
 
   void _onSearchPressed() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const SearchPage(),
-      ),
-    );
+    if (globalselectedCategory == "movies") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MoviesSearchPage(),
+        ),
+      );
+    } else if (globalselectedCategory == "series") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const SeriesSearchPage(),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const SearchPage(),
+        ),
+      );
+    }
   }
 }
 

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:streamapp/features/home/widgets/category_filter_widget.dart';
 import 'package:streamapp/features/home/widgets/content_row_widget.dart';
 import 'package:streamapp/features/home/widgets/hero_carousel_widget.dart';
+import 'package:streamapp/features/movies/presentation/pages/movies_home_page.dart';
+import 'package:streamapp/features/series/presentation/pages/series_home_page.dart';
 import 'package:streamapp/features/videos/presentation/pages/podcasts_home_page.dart';
 import 'package:streamapp/features/videos/presentation/pages/videos_home_page.dart';
 
@@ -27,6 +29,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final GlobalKey<VideosHomePageState> _videosHomeKey = GlobalKey();
+  final GlobalKey<MoviesHomePageState> _moviesHomeKey = GlobalKey();
+  final GlobalKey<MoviesHomePageState> _seriesHomeKey = GlobalKey();
   final GlobalKey<CategoryFilterWidgetState> _categoryFilterKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
 
@@ -50,8 +54,14 @@ class _HomePageState extends State<HomePage> {
       } else {
         print('❌ [HomePage] VideosHomeKey.currentState is NULL!');
       }
+    } else if (globalselectedCategory == 'movies') {
+      if (_moviesHomeKey.currentState != null) {
+        _moviesHomeKey.currentState!.requestMovieFocus();
+      } else {
+        print('❌ [HomePage] MoviesHomeKey.currentState is NULL!');
+      }
     } else {
-      print('🏠 [HomePage] Not on videos category');
+      print('🏠 [HomePage] Not on videos/movies category');
     }
   }
 
@@ -106,9 +116,15 @@ class _HomePageState extends State<HomePage> {
           onNavigateUp: _onNavigateUpFromVideos,
         );
       case 'movies':
-        return _buildComingSoon('Movies');
+        return MoviesHomePage(
+          key: _moviesHomeKey,
+          onNavigateUp: _onNavigateUpFromVideos,
+        );
       case 'series':
-        return _buildComingSoon('Series');
+        return SeriesHomePage(
+          key: _seriesHomeKey,
+          onNavigateUp: _onNavigateUpFromVideos,
+        );
       case 'tv_shows':
         return _buildComingSoon('TV Shows');
       case 'podcasts':
