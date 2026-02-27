@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:streamapp/features/home/widgets/category_filter_widget.dart';
 import 'package:streamapp/features/home/widgets/content_row_widget.dart';
 import 'package:streamapp/features/home/widgets/hero_carousel_widget.dart';
+import 'package:streamapp/features/iptv/presentation/pages/iptv_home_page.dart';
 import 'package:streamapp/features/movies/presentation/pages/movies_home_page.dart';
 import 'package:streamapp/features/series/presentation/pages/series_home_page.dart';
 import 'package:streamapp/features/videos/presentation/pages/podcasts_home_page.dart';
@@ -31,6 +32,7 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<VideosHomePageState> _videosHomeKey = GlobalKey();
   final GlobalKey<MoviesHomePageState> _moviesHomeKey = GlobalKey();
   final GlobalKey<MoviesHomePageState> _seriesHomeKey = GlobalKey();
+  final GlobalKey<IptvHomePageState> _iptvHomeKey = GlobalKey();
   final GlobalKey<CategoryFilterWidgetState> _categoryFilterKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
 
@@ -60,6 +62,8 @@ class _HomePageState extends State<HomePage> {
       } else {
         print('❌ [HomePage] MoviesHomeKey.currentState is NULL!');
       }
+    } else if (globalselectedCategory == 'iptv') {
+      _iptvHomeKey.currentState?.requestFocus();
     } else {
       print('🏠 [HomePage] Not on videos/movies category');
     }
@@ -130,7 +134,10 @@ class _HomePageState extends State<HomePage> {
       case 'podcasts':
         return PodcastsHomePage();
       case 'iptv':
-        return _buildComingSoon('IPTV');
+        return IptvHomePage(
+          key: _iptvHomeKey,
+          onNavigateUp: _onNavigateUpFromVideos,
+        );
       case 'live_channels':
         return _buildComingSoon('Live Channels');
       default:

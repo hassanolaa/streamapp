@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:streamapp/features/home/presentation/pages/home_page.dart';
+import 'package:streamapp/features/iptv/presentation/pages/iptv_search_page.dart';
 import 'package:streamapp/features/movies/presentation/pages/movies_search_page.dart';
 import 'package:streamapp/features/series/presentation/pages/series_search_page.dart';
 import 'package:streamapp/features/videos/presentation/pages/search_page.dart';
@@ -227,6 +228,13 @@ class CategoryFilterWidgetState extends State<CategoryFilterWidget> {
         context,
         MaterialPageRoute(
           builder: (context) => const SeriesSearchPage(),
+        ),
+      );
+    } else if (globalselectedCategory == "iptv") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const IptvSearchPage(),
         ),
       );
     } else {

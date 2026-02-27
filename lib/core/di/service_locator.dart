@@ -2,6 +2,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:streamapp/core/config/app_config.dart';
+import 'package:streamapp/features/iptv/data/datasources/iptv_remote_data_source.dart';
+import 'package:streamapp/features/iptv/data/repositories/iptv_repository_impl.dart';
 import 'package:streamapp/features/movies/data/datasources/movies_remote_data_source.dart';
 import 'package:streamapp/features/movies/data/repositories/movies_repository_impl.dart';
 import 'package:streamapp/features/series/data/datasources/series_remote_data_source.dart';
@@ -24,6 +26,16 @@ void setupLocator() async{
     () => VideosRepositoryImpl(
       remoteDataSource: sl(),
       localDataSource: sl(),
+    ),
+  );
+
+ sl.registerLazySingleton<IptvRemoteDataSource>(
+    () => IptvRemoteDataSourceImpl(),
+  );
+
+ sl.registerLazySingleton<IptvRepository>(
+    () => IptvRepositoryImpl(
+      remoteDataSource: sl(),
     ),
   );
 
