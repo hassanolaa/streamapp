@@ -77,8 +77,7 @@ class MyApp extends StatelessWidget {
 
       // ── Search ─────────────────────────────────────────────
       case 'search':
-        return SearchPage( //initialQuery: query ?? ''
-        );
+        return SearchPage(initialQuery: query ?? '');
 
       // ── Playlist ───────────────────────────────────────────
       case 'playlist':

@@ -613,14 +613,14 @@ class _SearchPageContentState extends State<_SearchPageContent> {
         return KeyEventResult.handled;
       }
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-      Navigator.of(context).pop();
+      _safePop();
       return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.enter ||
         event.logicalKey == LogicalKeyboardKey.space) {
       // Activate focused button
       if (_topBarFocusedIndex == 0) {
         print('⬅️ Back button pressed');
-        Navigator.of(context).pop();
+        _safePop();
       } else if (_topBarFocusedIndex == 2) {
         print('🎛️ Filters button pressed');
         _showFiltersDialog();
@@ -651,6 +651,14 @@ class _SearchPageContentState extends State<_SearchPageContent> {
     }
   }
 
+  void _safePop() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      SystemNavigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Shortcuts(
@@ -661,7 +669,7 @@ class _SearchPageContentState extends State<_SearchPageContent> {
         actions: {
           _BackIntent: CallbackAction<_BackIntent>(
             onInvoke: (_) {
-              Navigator.of(context).pop();
+              _safePop();
               return null;
             },
           ),
@@ -709,7 +717,7 @@ class _SearchPageContentState extends State<_SearchPageContent> {
                                 ),
                                 onPressed: () {
                                   print('⬅️ Back button clicked');
-                                  Navigator.of(context).pop();
+                                  _safePop();
                                 },
                                 style: IconButton.styleFrom(
                                   backgroundColor:
