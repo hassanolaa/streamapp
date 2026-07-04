@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:streamapp/core/di/service_locator.dart';
+import 'package:streamapp/core/services/content_filter_service.dart';
 import 'package:streamapp/features/series/data/models/series_model.dart';
 import 'package:streamapp/features/series/data/repositories/series_repository_impl.dart';
 import 'package:streamapp/features/series/presentation/cubit/series_cubit.dart';
@@ -114,10 +115,19 @@ class _SeriesSearchContentState extends State<_SeriesSearchContent> {
     }
   }
 
-  // ── Actions ──
-  void _performSearch() {
+  Future<void> _performSearch() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
+
+    final filterService = sl<ContentFilterService>();
+    final isBlocked = await filterService.isHarmful(query);
+    if (!mounted) return;
+
+    if (isBlocked) {
+      filterService.showBlockedDialog(context);
+      return;
+    }
+
     setState(() => _isFilterMode = false);
     context.read<SeriesCubit>().searchSeries(query);
     WidgetsBinding.instance

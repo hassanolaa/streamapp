@@ -4,7 +4,8 @@ import 'package:streamapp/features/iptv/data/models/iptv_country_model.dart';
 import 'package:streamapp/features/iptv/data/models/iptv_enriched_channel.dart';
 import 'package:streamapp/features/iptv/presentation/pages/iptv_player_page.dart';
 import 'package:streamapp/features/iptv/presentation/widgets/iptv_channel_card.dart';
-
+import 'dart:io';
+import 'package:path/path.dart' as p;
 class IptvCountryChannelsPage extends StatefulWidget {
   final String countryCode;
   final List<IptvEnrichedChannel> channels;
@@ -117,7 +118,7 @@ class _IptvCountryChannelsPageState extends State<IptvCountryChannelsPage> {
     });
   }
 
-  void _openChannel(IptvEnrichedChannel channel) {
+  void _openChannel(IptvEnrichedChannel channel) async{
     if (channel.streamUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -128,12 +129,29 @@ class _IptvCountryChannelsPageState extends State<IptvCountryChannelsPage> {
       );
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => IptvPlayerPage(channel: channel),
-      ),
-    );
+    print('Opening channel: ${channel.name} (${channel.streamUrl})');
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (_) => IptvPlayerPage(channel: channel),
+    //   ),
+    // );
+  
+    print('Opening channel: ${channel.name} (${channel.streamUrl})');
+
+     final exeDir = File(Platform.resolvedExecutable).parent.path;
+    final pythonPath = p.join(exeDir, 'python_app', 'venv', 'bin', 'python');
+    final workingDir = p.join(exeDir, 'python_app');
+    final result = await Process.start(
+  pythonPath,
+  ['main.py', '--iptv', channel.streamUrl!],
+  workingDirectory: workingDir,
+  mode: ProcessStartMode.detached,
+);
+print('🐍 pythonPath  → $pythonPath');
+print('📁 workingDir  → $workingDir');
+print('🔗 exists?     → ${File(pythonPath).existsSync()}');
+print('✅ Python player launched with PID: ${result.pid}');
   }
 
   @override

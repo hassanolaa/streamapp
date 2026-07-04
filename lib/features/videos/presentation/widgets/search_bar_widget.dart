@@ -7,7 +7,7 @@ import 'package:streamapp/features/videos/presentation/cubit/videos_cubit.dart';
 
 class SearchBarWidget extends StatefulWidget {
   final FocusNode focusNode;
-  final VoidCallback? onSearchSubmitted;
+  final ValueChanged<String>? onSearchSubmitted;
   final VoidCallback? onEscapePressed;
   final TextEditingController? controller;
 
@@ -63,10 +63,10 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   void _performSearch() {
     final query = _controller.text.trim();
     if (query.isNotEmpty) {
-      context.read<VideosCubit>().searchVideos(query,provider: globalSearchProvidersSelector());
-
       if (widget.onSearchSubmitted != null) {
-        widget.onSearchSubmitted!();
+        widget.onSearchSubmitted!(query);
+      } else {
+        context.read<VideosCubit>().searchVideos(query, provider: globalSearchProvidersSelector());
       }
     }
   }

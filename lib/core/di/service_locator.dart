@@ -2,6 +2,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:streamapp/core/config/app_config.dart';
+import 'package:streamapp/core/services/content_filter_service.dart';
 import 'package:streamapp/features/iptv/data/datasources/iptv_remote_data_source.dart';
 import 'package:streamapp/features/iptv/data/repositories/iptv_repository_impl.dart';
 import 'package:streamapp/features/movies/data/datasources/movies_remote_data_source.dart';
@@ -68,7 +69,7 @@ sl.registerLazySingleton<VideosRemoteDataSource>(
     ),
   );
   
-  sl.registerLazySingleton<SeriesRemoteDataSource>(
+ sl.registerLazySingleton<SeriesRemoteDataSource>(
     () => SeriesRemoteDataSourceImpl(
       apiKey: AppConfig.getTmdbApiKey(),
     ),
@@ -78,6 +79,9 @@ sl.registerLazySingleton<VideosRemoteDataSource>(
    sl.registerLazySingleton(() => GetStorage());
    sl.registerLazySingleton<RecommendationService>(
     () => RecommendationService(),
+  );
+   sl.registerLazySingleton<ContentFilterService>(
+    () => ContentFilterService(),
   );
    await sl<RecommendationService>().initialize();
 

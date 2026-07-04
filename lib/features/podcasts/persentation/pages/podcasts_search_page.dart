@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:streamapp/core/di/service_locator.dart';
+import 'package:streamapp/core/services/content_filter_service.dart';
 import 'package:streamapp/features/podcasts/persentation/cubit/podcasts_cubit.dart';
 import 'package:streamapp/features/podcasts/persentation/cubit/podcasts_state.dart';
 import 'package:streamapp/features/videos/data/services/recommendation_service.dart';
@@ -109,24 +110,33 @@ class _PodcastsSearchPageContentState extends State<_PodcastsSearchPageContent> 
     }
   }
 
-  void _performSearch() {
+  Future<void> _performSearch() async {
     final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+
+    final filterService = sl<ContentFilterService>();
+    final isBlocked = await filterService.isHarmful(query);
+    if (!mounted) return;
+
+    if (isBlocked) {
+      filterService.showBlockedDialog(context);
+      return;
+    }
+
     print('🔍 Performing search: "$query"');
     print('📋 Filters: $_selectedFilters');
     print('🔢 Sort: $_selectedSort');
     
-    if (query.isNotEmpty) {
-      context.read<PodcastCubit>().searchPodcast(
-            query,
-            filters: _selectedFilters.isNotEmpty ? _selectedFilters : null,
-            sortCriteria: _selectedSort,
-          );
+    context.read<PodcastCubit>().searchPodcast(
+          query,
+          filters: _selectedFilters.isNotEmpty ? _selectedFilters : null,
+          sortCriteria: _selectedSort,
+        );
 
-      // Focus grid after search
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _gridFocusNode.requestFocus();
-      });
-    }
+    // Focus grid after search
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _gridFocusNode.requestFocus();
+    });
   }
 
   void _showFiltersDialog() {
@@ -612,10 +622,8 @@ class _PodcastsSearchPageContentState extends State<_PodcastsSearchPageContent> 
                             _backButtonFocusNode.requestFocus();
                             setState(() => _topBarFocusedIndex = 0);
                           },
-                          onSearchSubmitted: () {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              _gridFocusNode.requestFocus();
-                            });
+                          onSearchSubmitted: (query) {
+                            _performSearch();
                           },
                         ),
                       ),

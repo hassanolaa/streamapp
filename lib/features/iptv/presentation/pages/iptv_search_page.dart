@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:streamapp/core/di/service_locator.dart';
+import 'package:streamapp/core/services/content_filter_service.dart';
 import 'package:streamapp/features/iptv/data/models/iptv_enriched_channel.dart';
 import 'package:streamapp/features/iptv/presentation/cubit/iptv_cubit.dart';
 import 'package:streamapp/features/iptv/presentation/cubit/iptv_state.dart';
@@ -73,15 +74,24 @@ class _IptvSearchContentState extends State<_IptvSearchContent> {
     super.dispose();
   }
 
-  void _performSearch() {
+  Future<void> _performSearch() async {
     final query = _searchController.text.trim();
-    if (query.isNotEmpty) {
-      context.read<IptvCubit>().searchChannels(query);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _gridFocusNode.requestFocus();
-        setState(() => _topBarFocusedIndex = 1);
-      });
+    if (query.isEmpty) return;
+
+    final filterService = sl<ContentFilterService>();
+    final isBlocked = await filterService.isHarmful(query);
+    if (!mounted) return;
+
+    if (isBlocked) {
+      filterService.showBlockedDialog(context);
+      return;
     }
+
+    context.read<IptvCubit>().searchChannels(query);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _gridFocusNode.requestFocus();
+      setState(() => _topBarFocusedIndex = 1);
+    });
   }
 
   void _focusTopBarItem(int index) {

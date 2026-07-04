@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:streamapp/core/di/service_locator.dart';
+import 'package:streamapp/core/services/content_filter_service.dart';
 import 'package:streamapp/features/movies/data/models/movie_model.dart';
 import 'package:streamapp/features/movies/data/repositories/movies_repository_impl.dart';
 import 'package:streamapp/features/movies/presentation/cubit/movies_cubit.dart';
@@ -116,10 +117,19 @@ class _MoviesSearchContentState extends State<_MoviesSearchContent> {
     }
   }
 
-  // ── Actions ──
-  void _performSearch() {
+  Future<void> _performSearch() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
+
+    final filterService = sl<ContentFilterService>();
+    final isBlocked = await filterService.isHarmful(query);
+    if (!mounted) return;
+
+    if (isBlocked) {
+      filterService.showBlockedDialog(context);
+      return;
+    }
+
     setState(() => _isFilterMode = false);
     context.read<MoviesCubit>().searchMovies(query);
     WidgetsBinding.instance.addPostFrameCallback((_) => _gridFocusNode.requestFocus());

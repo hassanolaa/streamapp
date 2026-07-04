@@ -14,7 +14,10 @@ import 'package:streamapp/features/videos/presentation/cubit/videos_state.dart';
 import 'package:streamapp/features/videos/presentation/pages/channel_details_page.dart';
 import 'package:streamapp/features/videos/presentation/widgets/video_card_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'dart:io';
+import 'dart:convert';
+import 'dart:io';
+import 'package:path/path.dart' as p;
 class VideoDetailsPage extends StatelessWidget {
   final String videoUrl;
   final StreamInfoModel? streamInfo; // 🆕 Optional pre-loaded data
@@ -96,10 +99,47 @@ class _VideoDetailsContentState extends State<_VideoDetailsContent> {
     print('⏱️ Watch timer started');
   }
 
-  void _onVideoPlay(StreamInfoModel info) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => 
-    VideoDetectionScreen(videoJson: info.toJson(),)
-    ));
+  void _onVideoPlay(StreamInfoModel info) async{
+   // print('▶️ Play button pressed for video: ${info.toJson()}');
+     try {
+    // 1. Write JSON to a temp file
+    final tempDir = Directory.systemTemp;
+    final tempFile = File('${tempDir.path}/video_data_${DateTime.now().millisecondsSinceEpoch}.json');
+    await tempFile.writeAsString(jsonEncode(info.toJson()));
+
+    // // 2. Launch the Python app
+    // final result = await Process.start(
+    //   '/home/hassanola/Desktop/python_app/venv/bin/python', // full path to venv python
+    //   ['main.py', '--json', tempFile.path],
+    //   workingDirectory: '/home/hassanola/Desktop/python_app',
+    //   mode: ProcessStartMode.detached, // don't block Flutter UI
+    // );
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+
+// Path to python inside bundled venv
+final pythonPath = p.join(exeDir, 'python_app', 'venv', 'bin', 'python');
+
+// Working directory for your Python app
+final workingDir = p.join(exeDir, 'python_app');
+
+final result = await Process.start(
+  pythonPath,
+  ['main.py', '--json', tempFile.path],
+  workingDirectory: workingDir,
+  mode: ProcessStartMode.detached,
+);
+
+    print('✅ Python player launched with PID: ${result.pid}');
+
+    // 3. Optional: clean up temp file after a delay
+    Future.delayed(const Duration(seconds: 5), () => tempFile.deleteSync());
+
+  } catch (e) {
+    print('❌ Failed to launch Python player: $e');
+  }
+    // Navigator.push(context, MaterialPageRoute(builder: (_) => 
+    // VideoDetectionScreen(videoJson: info.toJson(),)
+    // ));
   }
 
   void _onVideoPause() {
